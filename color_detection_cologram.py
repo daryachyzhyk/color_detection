@@ -12,12 +12,12 @@ import numpy as np
 # Extract n colors from an image.
 path_folder = '/home/darya/Documents/stuart/color'
 
-image_file_1 = 'D534C1.jpg' # dress
+# image_file_1 = 'D534C1.jpg' # dress
 # image_file_1 = 'test.png'
 
 # image_file_1 = 'S931C24.jpg' # blusa coral
 
-# image_file_1 = 'J1133C5.jpg' # rallas
+image_file_1 = 'J1133C5.jpg' # rallas
 
 # image_file_1 = 'T820C2.jpg' # blusa flores
 
@@ -28,11 +28,14 @@ colors_image = colorgram.extract(image_path, n_colors)
 
 
 color_theme = []
+proportions = []
 
 for color in colors_image:
     rgb = color.rgb
     rgb = tuple(rgb)
     color_theme.append((rgb[0] / 255, rgb[1] / 255, rgb[2] / 255))
+
+    proportions.append(color.proportion)
 
 
 # df = pd.DataFrame([[1], [2], [3]])
