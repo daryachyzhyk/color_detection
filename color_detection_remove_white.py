@@ -39,28 +39,36 @@ threshold_pct = 0.05
 for id_img, file in zip(id_image, image_list):
 
 
-    id_img = id_image[9]
-    file = image_list[9]
+    # id_img = id_image[9]
+    # file = image_list[9]
     img_open = Image.open(file)
-    img = img_open.convert("RGBA")
+    img = img_open.convert("RGB")
 
     data = img.getdata()
 
     new_data = []
     for item in data:
         if item[0] == 255 and item[1] == 255 and item[2] == 255:
-            new_data.append((np.nan, np.nan, np.nan, 0))
+            # new_data.append((np.nan, np.nan, np.nan, 0))
+            pass
         else:
             new_data.append(item)
+    size1 = 1280
+    size2 = np.int(len(new_data) / size1) + 1
+    img_extract = Image.new(img.mode, (size1, size2))
+    img_extract.putdata(new_data)
+    img_extract.save(os.path.join(folder_wo_white, id_img + '_wo_white_1.jpg'), "JPEG")
 
-    img.putdata(new_data)
-    img.save(os.path.join(folder_wo_white, id_img + '_wo_white_.png'), "PNG")
+    # img_wo_white = os.path.join(folder_wo_white, id_img + '_wo_white_.png')
 
-    img_wo_white = os.path.join(folder_wo_white, id_img + '_wo_white_.png')
+
+
+
+    img_wo_white = img_extract
 
     colors_image = colorgram.extract(img_wo_white, n_colors)
 
-    # aa = colors_image.sort(key=lambda c: c.rgb.h)
+
 
 
     color_theme = []
@@ -80,5 +88,5 @@ for id_img, file in zip(id_image, image_list):
     s = pd.Series(1, index=np.arange(number_colors_real))
     s.plot(kind='bar', color=image_colors)
 
-    plt.savefig(os.path.join(folder_colors, id_img + '_colors_' + str(threshold_pct) + '.png'))
+    plt.savefig(os.path.join(folder_colors, id_img + '_just_colors_' + str(threshold_pct) + '.png'))
 
