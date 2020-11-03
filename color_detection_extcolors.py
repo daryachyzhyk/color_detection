@@ -41,7 +41,8 @@ class ColorExtraction:
                         'password': 'awspassword',
                         'host': 'db-data-lake.lookiero.tech',
                         'port': 3306}
-            db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
+            # db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
+            db_catalog = {'host': '127.0.0.1',
                           'port': 5432,
                           'dbname': 'buying_back',
                           'user': 'buying_back_ro',
