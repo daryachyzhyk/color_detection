@@ -259,10 +259,13 @@ class ColorExtraction:
         dict_colors = self.get_colors_from_image(image)
         dict_similar_colors = {k: self.get_most_similar_color([int(x) for x in k.split("_")]) for k in dict_colors.keys()}
         dict_similar_colors_pct = {self.get_most_similar_color([int(x) for x in k.split("_")]): v for k, v in dict_colors.items()}
+        logger.log("colors: {}".format(dict_colors))
+        logger.log("similar: {}".format(dict_similar_colors))
+        logger.log("pct: {}".format(dict_similar_colors_pct))
         return dict_similar_colors, dict_similar_colors_pct
 
 if __name__ == "__main__":
-    group_color = "M117_C32"
+    # group_color = "M117_C32"
     # path_image = "/var/lib/lookiero/images_group_color_1/{}/{}.jpg".format(group_color, "".join(group_color.split("_")))
     # image = PIL.Image.open(path_image)
 
