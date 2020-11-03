@@ -45,8 +45,7 @@ class ColorExtraction:
                           'port': 5432,
                           'dbname': 'buying_back',
                           'user': 'buying_back_ro',
-                          'password': 'ShuperShekret',
-                          'client_encoding': 'latin1'}
+                          'password': 'ShuperShekret'}
 
 
         self.conn_mysql = MySQLdb.connect(**db_mysql)
