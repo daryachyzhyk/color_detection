@@ -84,14 +84,19 @@ class ColorExtraction:
         list_images = []
         i = 1
         for group, color in data_group.values:
-            logger.log("Processing image {} {}_{}".format(i, group, color))
-            image = self.get_image_from_s3(group, color)
-            if image:
-                dict_image = self.get_image_color_info(image)
-                list_images.append({**{"group": group, "color": color}, **dict_image})
-            else:
-                logger.log("Image {}_{} couldn't have been loaded.".format(group,color))
-            i += 1
+            try:
+                logger.log("Processing image {} {}_{}".format(i, group, color))
+                image = self.get_image_from_s3(group, color)
+                if image:
+                    dict_image = self.get_image_color_info(image)
+                    if dict_image:
+                        list_images.append({**{"group": group, "color": color}, **dict_image})
+                else:
+                    logger.log("Image {}_{} couldn't have been loaded.".format(group, color))
+                i += 1
+            except:
+                logger.log("There has been an error with image {}_{}.".format(group, color))
+                pass
 
         data = pd.DataFrame(list_images)
         data.to_csv(os.path.join(cfg.path_data, "LK_colors_info.csv"), index=False)
@@ -119,29 +124,36 @@ class ColorExtraction:
         """
 
         dict_similar_colors, dict_similar_colors_pct = self.get_image_representation(image)
-        dict_image = {}
-        i = 1
-        for color_image, color_lk in dict_similar_colors.items():
-            dict_image["img_color_{}_rgb".format(i)] = color_image
-            dict_image["lk_color_{}_rgb".format(i)] = color_lk
-            dict_image["lk_color_{}".format(i)] = self.lk_colors_rgb_idx[color_lk]
-            dict_image["pct_color_{}".format(i)] = dict_similar_colors_pct[color_lk]
-            i += 1
+        if dict_similar_colors:
+            dict_image = {}
+            i = 1
+            for color_image, color_lk in dict_similar_colors.items():
+                dict_image["img_color_{}_rgb".format(i)] = color_image
+                dict_image["lk_color_{}_rgb".format(i)] = color_lk
+                dict_image["lk_color_{}".format(i)] = self.lk_colors_rgb_idx[color_lk]
+                dict_image["pct_color_{}".format(i)] = dict_similar_colors_pct[color_lk]
+                i += 1
 
-        return dict_image
+            return dict_image
+        else:
+            return None
 
     def get_colors_from_image(self, image, threshold=0.01):
         """
         Extracts the colors and their percentage in a given image. The white color (255, 255, 255) is not taken into acount.
         :return: dictionary where the keys are the color RGB representation and the values are thei percentage in the image.
         """
-        colors_img, pixel_count = extcolors.extract_from_image(image)
-        white_pixels = [x[1] for x in colors_img if x[0] == (255, 255, 255)][0]
-        total_not_white_pixels = pixel_count - white_pixels
-        dict_image_colors = {"_".join([str(c) for c in k]): np.round(v / total_not_white_pixels, 2) for k, v in colors_img if k != (255, 255, 255)
-                             and np.round(v / total_not_white_pixels, 2) >= threshold}
+        try:
+            colors_img, pixel_count = extcolors.extract_from_image(image)
+            white_pixels = [x[1] for x in colors_img if x[0] == (255, 255, 255)][0]
+            total_not_white_pixels = pixel_count - white_pixels
+            dict_image_colors = {"_".join([str(c) for c in k]): np.round(v / total_not_white_pixels, 2) for k, v in colors_img if k != (255, 255, 255)
+                                 and np.round(v / total_not_white_pixels, 2) >= threshold}
 
-        return dict_image_colors
+            return dict_image_colors
+        except:
+            logger.log("There has been an error removing the background.")
+            return None
 
     def transform_rgb_to_yuv(self, rgb_std):
         """
@@ -243,9 +255,12 @@ class ColorExtraction:
         """
 
         dict_colors = self.get_colors_from_image(image)
-        dict_similar_colors = {k: self.get_most_similar_color([int(x) for x in k.split("_")]) for k in dict_colors.keys()}
-        dict_similar_colors_pct = {self.get_most_similar_color([int(x) for x in k.split("_")]): v for k, v in dict_colors.items()}
-        return dict_similar_colors, dict_similar_colors_pct
+        if dict_colors:
+            dict_similar_colors = {k: self.get_most_similar_color([int(x) for x in k.split("_")]) for k in dict_colors.keys()}
+            dict_similar_colors_pct = {self.get_most_similar_color([int(x) for x in k.split("_")]): v for k, v in dict_colors.items()}
+            return dict_similar_colors, dict_similar_colors_pct
+        else:
+            return None, None
 
 if __name__ == "__main__":
     # group_color = "M117_C32"
