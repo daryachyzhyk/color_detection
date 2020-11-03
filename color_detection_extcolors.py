@@ -82,14 +82,16 @@ class ColorExtraction:
         self.get_LK_color_data()
 
         list_images = []
+        i = 1
         for group, color in data_group.values:
-            logger.log("Processing image {}_{}".format(group, color))
+            logger.log("Processing image {} {}_{}".format(i, group, color))
             image = self.get_image_from_s3(group, color)
             if image:
                 dict_image = self.get_image_color_info(image)
                 list_images.append({**{"group": group, "color": color}, **dict_image})
             else:
                 logger.log("Image {}_{} couldn't have been loaded.".format(group,color))
+            i += 1
 
         data = pd.DataFrame(list_images)
         data.to_csv(os.path.join(cfg.path_data, "LK_colors_info.csv"), index=False)
