@@ -242,12 +242,14 @@ class ColorExtraction:
 
     def get_most_similar_color(self, query_color):
 
+        logger.log("query color {}".format(query_color))
         red_st, green_st, blue_st = self.standardize_rgb(query_color)
         y_query, u_query, v_query = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
         distances = np.sum(([y_query, u_query, v_query] - self.data_colors[["Y", "U", "V"]].values)**2, axis=1)
 
         idx_min = np.argmin(distances)
         similar_color = self.data_colors.iloc[idx_min].values
+        logger.log("similar color {}".format(similar_color))
         return "_".join([str(x) for x in similar_color[1:4]])
 
 
