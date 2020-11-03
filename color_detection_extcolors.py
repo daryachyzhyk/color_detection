@@ -76,7 +76,7 @@ class ColorExtraction:
 
     def get_LK_images_info(self, filter=True):
 
-        query = "select distinct `_group_id` as 'group', color from variations v {} limit 20;".format("where date_created > '2020-10-01'" if filter else "")
+        query = "select distinct `_group_id` as 'group', color from variations v {};".format("where date_created > '2020-10-01'" if filter else "")
         data_group = pd.read_sql_query(query, self.conn_mysql)
         self.get_LK_color_data()
 
@@ -102,8 +102,6 @@ class ColorExtraction:
         group_color = "".join([group, color])
         img_url = 'https://s3-eu-west-1.amazonaws.com/catalogo.labs/{}/{}.jpg'.format(group, group_color)
 
-        # http = urllib3.PoolManager()
-        # r = http.request('GET', img_url, preload_content=True)
         try:
             response = requests.get(img_url)
             image_bytes = io.BytesIO(response.content)
@@ -111,20 +109,6 @@ class ColorExtraction:
             return image
         except:
             return None
-        # if r.status != 404:
-        #     # with open("/home/jkobe/Downloads/prieba_image.jpg", 'wb') as out:
-        #     image = r.read(100)
-        #     response = requests.get(img_url)
-        #     image_bytes = io.BytesIO(response.content)
-        #     img = PIL.Image.open(image_bytes)
-        #     if not image:
-        #         return None
-        #     out.write(image)
-        #
-        # else:
-        #     return None
-        #
-        # return image
 
     def get_image_color_info(self, image):
         """
