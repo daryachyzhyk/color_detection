@@ -134,7 +134,6 @@ class ColorExtraction:
         dict_similar_colors, dict_similar_colors_pct = self.get_image_representation(image)
         dict_image = {}
         i = 1
-        logger.log(dict_similar_colors)
         for color_image, color_lk in dict_similar_colors.items():
             dict_image["img_color_{}_rgb".format(i)] = color_image
             dict_image["lk_color_{}_rgb".format(i)] = color_lk
@@ -242,14 +241,12 @@ class ColorExtraction:
 
     def get_most_similar_color(self, query_color):
 
-        logger.log("query color {}".format(query_color))
         red_st, green_st, blue_st = self.standardize_rgb(query_color)
         y_query, u_query, v_query = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
         distances = np.sum(([y_query, u_query, v_query] - self.data_colors[["Y", "U", "V"]].to_numpy())**2, axis=1)
 
         idx_min = np.argmin(distances)
         similar_color = self.data_colors.iloc[idx_min].values
-        logger.log("similar color {}".format(similar_color))
         return "_".join([str(x) for x in similar_color[1:4]])
 
 
@@ -261,9 +258,6 @@ class ColorExtraction:
         dict_colors = self.get_colors_from_image(image)
         dict_similar_colors = {k: self.get_most_similar_color([int(x) for x in k.split("_")]) for k in dict_colors.keys()}
         dict_similar_colors_pct = {self.get_most_similar_color([int(x) for x in k.split("_")]): v for k, v in dict_colors.items()}
-        logger.log("colors: {}".format(dict_colors))
-        logger.log("similar: {}".format(dict_similar_colors))
-        logger.log("pct: {}".format(dict_similar_colors_pct))
         return dict_similar_colors, dict_similar_colors_pct
 
 if __name__ == "__main__":
