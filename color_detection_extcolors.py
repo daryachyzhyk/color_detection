@@ -227,6 +227,7 @@ class ColorExtraction:
             dict_colors["Green"] = green
             dict_colors["Blue"] = blue
 
+            logger.log("{}".format(color_name))
             dict_colors["Red_st"] = colors.to_rgb(color_name)[0]
             dict_colors["Green_st"] = colors.to_rgb(color_name)[1]
             dict_colors["Blue_st"] = colors.to_rgb(color_name)[2]
