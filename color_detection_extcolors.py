@@ -134,6 +134,7 @@ class ColorExtraction:
         dict_similar_colors, dict_similar_colors_pct = self.get_image_representation(image)
         dict_image = {}
         i = 1
+        logger.log(dict_similar_colors)
         for color_image, color_lk in dict_similar_colors.items():
             dict_image["img_color_{}_rgb".format(i)] = color_image
             dict_image["lk_color_{}_rgb".format(i)] = color_lk
