@@ -41,11 +41,13 @@ class ColorExtraction:
                         'password': 'awspassword',
                         'host': 'db-data-lake.lookiero.tech',
                         'port': 3306}
-            db_catalog = {'database': 'buying_back',
-                        'user': 'buying_back_ro',
-                        'password': 'ShuperShekret',
-                        'host': 'db-buying-back-slave.lookiero.tech',
-                        'port': 5432}
+            db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
+                          'port': 5432,
+                          'dbname': 'buying_back',
+                          'user': 'buying_back_ro',
+                          'password': 'ShuperShekret',
+                          'client_encoding': 'latin1'}
+
 
         self.conn_mysql = MySQLdb.connect(**db_mysql)
         self.conn_catalog = psycopg2.connect(**db_catalog)
