@@ -43,7 +43,8 @@ class ColorExtraction:
                         'port': 3306}
             # db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
             db_catalog = {'host': '127.0.0.1',
-                          'port': 5432,
+                          # 'port': 5432,
+                          'port': 5433,
                           'dbname': 'buying_back',
                           'user': 'buying_back_ro',
                           'password': 'ShuperShekret'}
