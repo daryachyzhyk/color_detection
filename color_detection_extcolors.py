@@ -6,6 +6,7 @@ import MySQLdb
 import psycopg2
 # from colors import rgb, hex
 from matplotlib import colors
+from skimage.color import deltaE_cie76
 import requests, io
 import os
 import config as cfg
@@ -41,10 +42,10 @@ class ColorExtraction:
                         'password': 'awspassword',
                         'host': 'db-data-lake.lookiero.tech',
                         'port': 3306}
-            # db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
-            db_catalog = {'host': '127.0.0.1',
-                          # 'port': 5432,
-                          'port': 5433,
+            db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
+            # db_catalog = {'host': '127.0.0.1',
+                          'port': 5432,
+                          # 'port': 5433,
                           'dbname': 'buying_back',
                           'user': 'buying_back_ro',
                           'password': 'ShuperShekret'}
@@ -138,19 +139,29 @@ class ColorExtraction:
         else:
             return None
 
-    def get_colors_from_image(self, image, threshold=0.01):
+    def get_colors_from_image(self, image):
         """
         Extracts the colors and their percentage in a given image. The white color (255, 255, 255) is not taken into acount.
         :return: dictionary where the keys are the color RGB representation and the values are thei percentage in the image.
         """
         try:
             colors_img, pixel_count = extcolors.extract_from_image(image)
-            white_pixels = [x[1] for x in colors_img if x[0] == (255, 255, 255)][0]
-            total_not_white_pixels = pixel_count - white_pixels
-            dict_image_colors = {"_".join([str(c) for c in k]): np.round(v / total_not_white_pixels, 2) for k, v in colors_img if k != (255, 255, 255)
-                                 and np.round(v / total_not_white_pixels, 2) >= threshold}
+            if len(colors_img) > 1:
+                if colors_img[0][0] == (255, 255, 255) and colors_img[0][1]/pixel_count > cfg.white_threshold:
+                    total_not_white_pixels = int(pixel_count*(1 - cfg.white_threshold))
+                else:
+                    white_pixels = [x[1] for x in colors_img if x[0] == (255, 255, 255)][0]
+                    total_not_white_pixels = pixel_count - white_pixels
+                dict_image_colors = {"_".join([str(c) for c in k]): np.round(v / total_not_white_pixels, 2)
+                                     for k, v in colors_img
+                                     if (k != (255, 255, 255) and np.round(v / total_not_white_pixels, 2) >= cfg.threshold_min_pct)}
+                sum_pct = sum(dict_image_colors.values())
+                if sum_pct < 1:
+                    dict_image_colors["255_255_255"] = np.round(1 - sum_pct, 2)
+            else:
+                dict_image_colors = {"255_255_255": 1}
 
-            return dict_image_colors
+            return {k: v for k, v in sorted(dict_image_colors.items(), key=lambda x: x[1], reverse=True)}
         except:
             logger.log("There has been an error removing the background.")
             return None
@@ -241,8 +252,10 @@ class ColorExtraction:
     def get_most_similar_color(self, query_color):
 
         red_st, green_st, blue_st = self.standardize_rgb(query_color)
-        y_query, u_query, v_query = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
-        distances = np.sum(([y_query, u_query, v_query] - self.data_colors[["Y", "U", "V"]].to_numpy())**2, axis=1)
+        # y_query, u_query, v_query = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
+        # distances = np.sum(([y_query, u_query, v_query] - self.data_colors[["Y", "U", "V"]].to_numpy())**2, axis=1)
+        distances = deltaE_cie76([red_st, green_st, blue_st], self.data_colors[["Red_st", "Green_st", "Blue_st"]].to_numpy())
+
 
         idx_min = np.argmin(distances)
         similar_color = self.data_colors.iloc[idx_min].values
@@ -263,12 +276,14 @@ class ColorExtraction:
             return None, None
 
 if __name__ == "__main__":
-    # group_color = "M117_C32"
+    # group_color = "T1236_C2"
     # path_image = "/var/lib/lookiero/images_group_color_1/{}/{}.jpg".format(group_color, "".join(group_color.split("_")))
     # image = PIL.Image.open(path_image)
 
     ce = ColorExtraction()
+    image = ce.get_image_from_s3("S3097", "C1")
     ce.get_LK_color()
-    ce.get_LK_images_info()
-    # # ce.get_color_data()
+    ce.get_LK_color_data()
+    # ce.get_LK_images_info()
+    dict_similar_colors, dict_similar_colors_pct = ce.get_image_representation(image)
     # ce.get_LK_color_data()
