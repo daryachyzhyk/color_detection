@@ -57,6 +57,16 @@ class ColorExtraction:
         if not os.path.exists(cfg.path_data):
             os.makedirs(cfg.path_data)
 
+    def load_extracted_colors(self):
+        """
+        Method to load data of colors extracted from clothes.
+        """
+        try:
+            return pd.read_csv(os.path.join(cfg.path_data, "LK_colors_info.csv"))
+            # return np.array(["_".join([x]) for x in data[["group", "color"]].values])
+        except:
+            return pd.DataFrame()
+
     def get_LK_color(self):
         """
         Method to get LK colors and their RGB representation.
@@ -81,25 +91,34 @@ class ColorExtraction:
                 " and i.family not in (14, 15, 16, 17, 18, 19, 24, 27, 28, 29, 30, 31){};".format(" and v.date_created > '2020-10-01'" if filter else "")
         data_group = pd.read_sql_query(query, self.conn_mysql)
         self.get_LK_color_data()
+        df_extracted_group_colors = self.load_extracted_colors()
+        if not df_extracted_group_colors.empty:
+            list_extracted_group_colors = np.array(["_".join(x) for x in df_extracted_group_colors[["group", "color"]].values])
+        else:
+            list_extracted_group_colors = []
 
         list_images = []
         i = 1
         for group, color in data_group.values:
-            try:
-                logger.log("Processing image {} {}_{}".format(i, group, color))
-                image = self.get_image_from_s3(group, color)
-                if image:
-                    dict_image = self.get_image_color_info(image)
-                    if dict_image:
-                        list_images.append({**{"group": group, "color": color}, **dict_image})
-                else:
-                    logger.log("Image {}_{} couldn't have been loaded.".format(group, color))
-                i += 1
-            except:
-                logger.log("There has been an error with image {}_{}.".format(group, color))
-                pass
+            group_color = "_".join([group, color])
+            if not group_color in list_extracted_group_colors:
+                try:
+                    logger.log("Processing image {} {}_{}".format(i, group, color))
+                    image = self.get_image_from_s3(group, color)
+                    if image:
+                        dict_image = self.get_image_color_info(image)
+                        if dict_image:
+                            list_images.append({**{"group": group, "color": color}, **dict_image})
+                    else:
+                        logger.log("Image {}_{} couldn't have been loaded.".format(group, color))
+                    i += 1
+                except:
+                    logger.log("There has been an error with image {}_{}.".format(group, color))
+                    pass
 
         data = pd.DataFrame(list_images)
+        if not df_extracted_group_colors.empty:
+            data = pd.concat([df_extracted_group_colors, data])
         data.to_csv(os.path.join(cfg.path_data, "LK_colors_info.csv"), index=False)
         return data
 
