@@ -88,7 +88,8 @@ class ColorExtraction:
     def get_LK_images_info(self, filter=True):
 
         query = "select distinct i.`_group_id` as 'group', v.color from variations v, items i where v._group_id=i._group_id" \
-                " and i.family not in (14, 15, 16, 17, 18, 19, 24, 27, 28, 29, 30, 31){};".format(" and v.date_created > '2020-10-01'" if filter else "")
+                "{};".format(" and v.date_created > '2020-10-01'" if filter else "")
+                # " and i.family not in (14, 15, 16, 17, 18, 19, 24, 27, 28, 29, 30, 31){};".format(" and v.date_created > '2020-10-01'" if filter else "")
         data_group = pd.read_sql_query(query, self.conn_mysql)
         self.get_LK_color_data()
         df_extracted_group_colors = self.load_extracted_colors()
