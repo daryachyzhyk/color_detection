@@ -2,7 +2,8 @@ import extcolors
 import PIL
 import pandas as pd
 import numpy as np
-import MySQLdb
+# import MySQLdb
+import mysql.connector as MySQLdb
 import psycopg2
 # from colors import rgb, hex
 from matplotlib import colors
@@ -21,6 +22,7 @@ pd.set_option('display.width', desired_width)
 np.set_printoptions(linewidth=desired_width)
 
 pd.set_option('display.max_columns', 2500)
+
 
 class ColorExtraction:
 
@@ -294,6 +296,7 @@ class ColorExtraction:
             return dict_similar_colors, dict_similar_colors_pct
         else:
             return None, None
+
 
 if __name__ == "__main__":
     # group_color = "T1236_C2"

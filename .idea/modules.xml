@@ -3,6 +3,8 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/color_detection.iml" filepath="$PROJECT_DIR$/.idea/color_detection.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../gitLookiero/ds-data-core/.idea/ds-data-core.iml" filepath="$PROJECT_DIR$/../gitLookiero/ds-data-core/.idea/ds-data-core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../image_segmentation_apparels/.idea/image_segmentation_apparels.iml" filepath="$PROJECT_DIR$/../image_segmentation_apparels/.idea/image_segmentation_apparels.iml" />
     </modules>
   </component>
 </project>
