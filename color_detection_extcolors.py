@@ -2,8 +2,8 @@ import extcolors
 import PIL
 import pandas as pd
 import numpy as np
-# import MySQLdb
-import mysql.connector as MySQLdb
+import MySQLdb
+# import mysql.connector as MySQLdb
 import psycopg2
 # from colors import rgb, hex
 from matplotlib import colors

@@ -109,7 +109,15 @@ class ColorExtractionwithMask(ColorExtraction):
                             n_images_comp += 1
                     except Exception:
                         continue
-                return pd.DataFrame(list_gc_dict)
+
+                df_gc_color_dist_df = pd.DataFrame(list_gc_dict)
+                df_gc_color_dist_df.to_csv(os.path.join(cfg.path_data, 'LK_gc_matplotlib_distributions.csv'),
+                                           index=False)
+                if self.list_not_found_groupcolors:
+                    not_found_gc_df = pd.DataFrame(self.list_not_found_groupcolors)
+                    not_found_gc_df.to_csv(os.path.join(cfg.path_data, 'LK_gc_not_found_color_distributions.csv'),
+                                           index=False)
+                return df_gc_color_dist_df
         except Exception:
             return None
 
@@ -193,10 +201,6 @@ class ColorExtractionwithMask(ColorExtraction):
 
 
 if __name__ == "__main__":
-    cem = ColorExtractionwithMask(local=False)
+    cem = ColorExtractionwithMask(local=True)
     df_gc_color_distributions = cem.get_LK_images_info('2020-10-01')
-    df_gc_color_distributions.to_csv(os.path.join(cfg.path_data, 'LK_gc_matplotlib_distributions.csv'), index=False)
-    if cem.list_not_found_groupcolors:
-        df_not_found_gc = pd.DataFrame(cem.list_not_found_groupcolors)
-        df_not_found_gc.to_csv(os.path.join(cfg.path_data, 'LK_gc_not_found_color_distributions.csv'), index=False)
     print("Done")
