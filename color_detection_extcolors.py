@@ -44,14 +44,13 @@ class ColorExtraction:
                         'password': 'awspassword',
                         'host': 'db-data-lake.lookiero.tech',
                         'port': 3306}
-            # db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
-            db_catalog = {'host': '127.0.0.1',
-                          # 'port': 5432,
-                          'port': 5433,
+            db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
+            # db_catalog = {'host': '127.0.0.1',
+                          'port': 5432,
+                          # 'port': 5433,
                           'dbname': 'buying_back',
                           'user': 'buying_back_ro',
                           'password': 'ShuperShekret'}
-
 
         self.conn_mysql = MySQLdb.connect(**db_mysql)
         self.conn_catalog = psycopg2.connect(**db_catalog)
@@ -85,7 +84,6 @@ class ColorExtraction:
         self.lk_colors_rgb = {k: [self.standardize_rgb_inverse(v)[0], self.standardize_rgb_inverse(v)[1], self.standardize_rgb_inverse(v)[2]]
                               for k, v in self.dict_colors.items()}
         self.lk_colors_rgb_idx = {"_".join([str(v[0]), str(v[1]), str(v[2])]): k for k, v in self.lk_colors_rgb.items()}
-
 
     def get_LK_images_info(self, filter=True):
 

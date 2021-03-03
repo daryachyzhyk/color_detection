@@ -2,6 +2,7 @@ import os
 import PIL
 import cv2
 import extcolors
+import re
 import io
 import tqdm
 import numpy as np
@@ -9,10 +10,13 @@ import pandas as pd
 import requests
 from matplotlib import colors
 from skimage.color import deltaE_cie76
+from data_core import util
 
 import config as cfg
 from color_detection_extcolors import ColorExtraction
 from image_segmentation_apparels.main import find_mask
+
+logger = util.LoggingClass('color_detection')
 
 desired_width = 320
 
@@ -24,8 +28,9 @@ pd.set_option('display.max_columns', 2500)
 
 
 class ColorExtractionwithMask(ColorExtraction):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, local=True):
+        super().__init__(local=local)
+        self.local = local
         self.data_matplotlib_colors = None
         self.get_matplotlib_color_data()
         self.list_not_found_groupcolors = []
@@ -52,26 +57,61 @@ class ColorExtractionwithMask(ColorExtraction):
         Info: Method to extract all the different group_colors existing in the LK catalog
         :param filtered Refers to the earliest date from which you would like to get clothes from.
         """
-        suffix_query = f" where date_created >= {filtered}" if filtered else ""
-        query = f"select distinct `_group_id` as 'group', color from variations{suffix_query};"
+        try:
+            list_gc_dict = []
+            if self.local:
+                suffix_query = f" where date_created >= {filtered}" if filtered else ""
+                query = f"select distinct `_group_id` as 'group', color from variations{suffix_query};"
 
-        data_group = pd.read_sql_query(query, self.conn_mysql)
-        list_gc_dict = []
-        for group, color in tqdm.tqdm(data_group.values):
-            try:
-                group_color = "_".join([group, color])
-                image = self.get_image_from_s3(group, color)
-                dict_colors = self.get_colors_from_image(image)
-                color_distribution = {color_name: 0. for color_name in colors.cnames.keys()}
-                color_distribution['group_color'] = group_color
-                for rgb_str, pct in dict_colors.items():
-                    matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
-                    color_distribution[matcolor] = pct
-                list_gc_dict.append(color_distribution)
-            except:
-                self.list_not_found_groupcolors.append({'group_color': "_".join([group, color])})
-                continue
-        return pd.DataFrame(list_gc_dict)
+                data_group = pd.read_sql_query(query, self.conn_mysql)
+
+                for group, color in tqdm.tqdm(data_group.values):
+                    try:
+                        group_color = "_".join([group, color])
+                        image = self.get_image_from_s3(group, color)
+                        dict_colors = self.get_colors_from_image(image)
+                        color_distribution = {color_name: 0. for color_name in colors.cnames.keys()}
+                        color_distribution['group_color'] = group_color
+                        for rgb_str, pct in dict_colors.items():
+                            matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
+                            color_distribution[matcolor] = pct
+                        list_gc_dict.append(color_distribution)
+                    except:
+                        self.list_not_found_groupcolors.append({'group_color': "_".join([group, color])})
+                        continue
+                return pd.DataFrame(list_gc_dict)
+            else:
+                path_images = '/var/lib/lookiero/images'
+                regex = '(\D+\d+)(C\d+)(?:.jpg)'
+                n_images_comp = 0
+                pct = 0  # percentage of the computation done
+                tot_images = len(os.listdir(path_images))
+                for file in os.listdir(path_images):
+                    try:
+                        if file.endswith('.jpg'):
+                            if np.round(n_images_comp / tot_images, 2) != pct:
+                                pct = np.round(n_images_comp / tot_images, 2)
+                                logger.log(f"Percentage of the images computed: {int(pct*100)} %")
+
+                            group_color = "_".join(re.findall(regex, file)[0])
+                            try:
+                                image = cv2.imread(os.path.join(path_images, file))
+                                dict_colors = self.get_colors_from_image(image)
+                                color_distribution = {color_name: 0. for color_name in colors.cnames.keys()}
+                                color_distribution['group_color'] = group_color
+                                for rgb_str, pct in dict_colors.items():
+                                    matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
+                                    color_distribution[matcolor] = pct
+                                list_gc_dict.append(color_distribution)
+                            except Exception:
+                                self.list_not_found_groupcolors.append({'group_color': group_color})
+                                continue
+                            n_images_comp += 1
+                    except Exception:
+                        continue
+                return pd.DataFrame(list_gc_dict)
+        except Exception:
+            return None
 
     def get_colors_from_image(self, image):
         """
@@ -153,10 +193,10 @@ class ColorExtractionwithMask(ColorExtraction):
 
 
 if __name__ == "__main__":
-    cem = ColorExtractionwithMask()
+    cem = ColorExtractionwithMask(local=False)
     df_gc_color_distributions = cem.get_LK_images_info('2020-10-01')
     df_gc_color_distributions.to_csv(os.path.join(cfg.path_data, 'LK_gc_matplotlib_distributions.csv'), index=False)
-    df_not_found_gc = pd.DataFrame(cem.list_not_found_groupcolors)
-    df_not_found_gc.to_csv(os.path.join(cfg.path_data, 'LK_gc_not_found_color_distributions.csv'), index=False)
-    # TODO: Maybe to make a list of the apparels that could not be parsed
-    print("OK")
+    if cem.list_not_found_groupcolors:
+        df_not_found_gc = pd.DataFrame(cem.list_not_found_groupcolors)
+        df_not_found_gc.to_csv(os.path.join(cfg.path_data, 'LK_gc_not_found_color_distributions.csv'), index=False)
+    print("Done")
