@@ -29,7 +29,7 @@ pd.set_option('display.max_columns', 2500)
 
 class ColorExtractionwithMask(ColorExtraction):
     def __init__(self, local=True):
-        super().__init__(local=local)
+        super().__init__(local=local, connect_catalog=False)
         self.local = local
         self.data_matplotlib_colors = None
         self.get_matplotlib_color_data()
