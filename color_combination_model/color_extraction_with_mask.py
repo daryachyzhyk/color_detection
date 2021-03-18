@@ -72,7 +72,7 @@ class ColorExtractionwithMask(ColorExtraction):
 
             list_gc_dict = []
             list_not_found_groupcolors = []
-            if not self.local:
+            if self.local:
                 suffix_query = f" where date_created >= {filtered}" if filtered else ""
                 query = f"select distinct `_group_id` as 'group', color from variations{suffix_query};"
 
@@ -223,6 +223,6 @@ class ColorExtractionwithMask(ColorExtraction):
 
 
 if __name__ == "__main__":
-    cem = ColorExtractionwithMask(local=False)
+    cem = ColorExtractionwithMask(local=True)
     df_gc_color_distributions = cem.get_LK_images_info('2020-10-01')
     print("Done")

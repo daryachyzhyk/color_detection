@@ -7,5 +7,5 @@ def color_extraction_with_mask_cron(local=True):
 
 
 if __name__ == "__main__":
-    color_extraction_with_mask_cron(local=True)
+    color_extraction_with_mask_cron(local=False)
     print("Done")
