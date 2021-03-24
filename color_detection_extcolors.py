@@ -26,7 +26,7 @@ pd.set_option('display.max_columns', 2500)
 
 class ColorExtraction:
 
-    def __init__(self, local=True, connect_catalog=True):
+    def __init__(self, local=True):
         if local:
             db_mysql = {'database': 'lookiero',
                         'user': 'awsuser',
@@ -53,9 +53,7 @@ class ColorExtraction:
                           'password': 'ShuperShekret'}
 
         self.conn_mysql = MySQLdb.connect(**db_mysql)
-        self.conn_catalog = None
-        if connect_catalog:
-            self.conn_catalog = psycopg2.connect(**db_catalog)
+        self.conn_catalog = psycopg2.connect(**db_catalog)
 
         if not os.path.exists(cfg.path_data):
             os.makedirs(cfg.path_data)

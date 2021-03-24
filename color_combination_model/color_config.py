@@ -1,9 +1,12 @@
 file_color_models = '/var/lib/lookiero/direct_buy_model/color_model/model/'
 product_numeric_vars = 12  #
 
-color_decomposition_filename = '/var/lib/lookiero/color_detection/LK_gc_matplotlib_distributions.csv'
+color_decomposition_filename_matplotlib = '/var/lib/lookiero/color_detection/LK_gc_matplotlib_distributions.csv'
+color_decomposition_filename_lk = '/var/lib/lookiero/color_detection/LK_gc_lookiero_distributions.csv'
+color_info_filename_lk = '/var/lib/lookiero/color_detection/LK_colors_info.csv'
 not_color_decomposition_filename = '/var/lib/lookiero/color_detection/LK_gc_not_found_color_distributions.csv'
 comb_tr_filename = '/var/lib/lookiero/direct_buy_model/data/compatible_clothes.csv'
+comb_test_filename = '/Users/ivan/Downloads/test_data_color.csv'
 group_color_filename = '/var/lib/lookiero/direct_buy_model/color_model/data/group_color_df.obj'
 dict_test_filename = '/var/lib/lookiero/direct_buy_model/color_model/data/dict_test_info.obj'
 dict_tr_filename = '/var/lib/lookiero/direct_buy_model/color_model/data/dict_tr_info.obj'
