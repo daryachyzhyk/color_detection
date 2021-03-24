@@ -126,6 +126,8 @@ class ColorExtractionwithMask(ColorExtraction):
                             list_gc_dict_matplotlib.append(color_distribution_matplotlib)
                             list_gc_dict_lk.append(color_distribution_lk)
                         except Exception as error:
+                            logger.log(f'Error in computing {group_color}', exc_info=True, level='error')
+                            logger.log(error, exc_info=True, level='error')
                             list_not_found_groupcolors.append({'group_color': group_color})
                             continue
             else:
@@ -139,7 +141,7 @@ class ColorExtractionwithMask(ColorExtraction):
                             group_color = "_".join(re.findall(regex, file)[0])
 
                             try:
-                                if n_images_comp % 2000 == 0:
+                                if n_images_comp % 1000 == 0:
                                     pct = n_images_comp*100 // tot_images  # percentage of the computation done
                                     logger.log(f"Percentage of the images computed: {int(pct)} %")
                             except:
@@ -171,7 +173,9 @@ class ColorExtractionwithMask(ColorExtraction):
                                     list_gc_info_lk.append(dict_image)
                                     list_gc_dict_matplotlib.append(color_distribution_matplotlib)
                                     list_gc_dict_lk.append(color_distribution_lk)
-                                except Exception:
+                                except Exception as error:
+                                    logger.log(f'Error in computing {group_color}', exc_info=True, level='error')
+                                    logger.log(error, exc_info=True, level='error')
                                     list_not_found_groupcolors.append({'group_color': group_color})
                                     continue
                             n_images_comp += 1
@@ -205,6 +209,8 @@ class ColorExtractionwithMask(ColorExtraction):
             return True
 
         except Exception as error:
+            logger.log('Error in LK_images_info', exc_info=True, level='error')
+            logger.log(error, exc_info=True, level='error')
             return False
 
     def get_colors_from_image(self, image):
@@ -252,72 +258,82 @@ class ColorExtractionwithMask(ColorExtraction):
         """
         Method to get LK colors and their RGB representation.
         """
+        try:
+            query_colors = "select code, hexadecimal from color;"
+            data_colors = pd.read_sql_query(query_colors, self.conn_catalog)
 
-        query_colors = "select code, hexadecimal from color;"
-        data_colors = pd.read_sql_query(query_colors, self.conn_catalog)
+            for row in data_colors.values:
+                rgb_color = list(np.round(colors.hex2color("".join(["#", row[1].lower()])), 2))
+                self.dict_LK_colors[row[0]] = rgb_color
 
-        for row in data_colors.values:
-            rgb_color = list(np.round(colors.hex2color("".join(["#", row[1].lower()])), 2))
-            self.dict_LK_colors[row[0]] = rgb_color
-
-        self.lk_colors_rgb = {k: [self.standardize_rgb_inverse(v)[0], self.standardize_rgb_inverse(v)[1],
-                                  self.standardize_rgb_inverse(v)[2]]
-                              for k, v in self.dict_LK_colors.items()}
-        self.lk_colors_rgb_idx = {"_".join([str(v[0]), str(v[1]), str(v[2])]): k for k, v in self.lk_colors_rgb.items()}
+            self.lk_colors_rgb = {k: [self.standardize_rgb_inverse(v)[0], self.standardize_rgb_inverse(v)[1],
+                                      self.standardize_rgb_inverse(v)[2]]
+                                  for k, v in self.dict_LK_colors.items()}
+            self.lk_colors_rgb_idx = {"_".join([str(v[0]), str(v[1]), str(v[2])]): k for k, v in self.lk_colors_rgb.items()}
+        except Exception as error:
+            logger.log('Error in get_LK_color', exc_info=True, level='error')
+            logger.log(error, exc_info=True, level='error')
 
     def get_LK_color_data(self):
         """ Method to extract all the available colors in LK with their numeric information."""
+        try:
+            list_colors = []
+            for color_name in sorted(self.lk_colors_rgb.keys()):
+                dict_colors = {"Name": color_name}
 
-        list_colors = []
-        for color_name in sorted(self.lk_colors_rgb.keys()):
-            dict_colors = {"Name": color_name}
+                red_st, green_st, blue_st = self.dict_LK_colors[color_name]
+                red, green, blue = self.lk_colors_rgb[color_name]
+                y, u, v = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
 
-            red_st, green_st, blue_st = self.dict_LK_colors[color_name]
-            red, green, blue = self.lk_colors_rgb[color_name]
-            y, u, v = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
+                dict_colors["Red"] = red
+                dict_colors["Green"] = green
+                dict_colors["Blue"] = blue
 
-            dict_colors["Red"] = red
-            dict_colors["Green"] = green
-            dict_colors["Blue"] = blue
+                dict_colors["Red_st"] = red_st
+                dict_colors["Green_st"] = green_st
+                dict_colors["Blue_st"] = blue_st
 
-            dict_colors["Red_st"] = red_st
-            dict_colors["Green_st"] = green_st
-            dict_colors["Blue_st"] = blue_st
+                dict_colors["Y"] = y
+                dict_colors["U"] = u
+                dict_colors["V"] = v
 
-            dict_colors["Y"] = y
-            dict_colors["U"] = u
-            dict_colors["V"] = v
+                list_colors.append(dict_colors)
 
-            list_colors.append(dict_colors)
-
-        self.data_LK_colors = pd.DataFrame(list_colors)
+            self.data_LK_colors = pd.DataFrame(list_colors)
+        except Exception as error:
+            logger.log('Error in get_LK_color_data', exc_info=True, level='error')
+            logger.log(error, exc_info=True, level='error')
 
     def get_matplotlib_color_data(self):
         """ Method to extract all the available colors in Matplotlib with their information."""
-        list_colors = []
-        for color_name in sorted(colors.cnames.keys()):
-            dict_matplotlib_color = dict()
-            dict_matplotlib_color["Name"] = color_name
+        try:
+            list_colors = []
+            for color_name in sorted(colors.cnames.keys()):
+                dict_matplotlib_color = dict()
+                dict_matplotlib_color["Name"] = color_name
 
-            red_st, green_st, blue_st = self.get_rgb_standard(color_name)
-            red, green, blue = self.standardize_rgb_inverse([red_st, green_st, blue_st])
-            y, u, v = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
+                red_st, green_st, blue_st = self.get_rgb_standard(color_name)
+                red, green, blue = self.standardize_rgb_inverse([red_st, green_st, blue_st])
+                y, u, v = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
 
-            dict_matplotlib_color["Red"] = red
-            dict_matplotlib_color["Green"] = green
-            dict_matplotlib_color["Blue"] = blue
+                dict_matplotlib_color["Red"] = red
+                dict_matplotlib_color["Green"] = green
+                dict_matplotlib_color["Blue"] = blue
 
-            dict_matplotlib_color["Red_st"] = colors.to_rgb(color_name)[0]
-            dict_matplotlib_color["Green_st"] = colors.to_rgb(color_name)[1]
-            dict_matplotlib_color["Blue_st"] = colors.to_rgb(color_name)[2]
+                dict_matplotlib_color["Red_st"] = colors.to_rgb(color_name)[0]
+                dict_matplotlib_color["Green_st"] = colors.to_rgb(color_name)[1]
+                dict_matplotlib_color["Blue_st"] = colors.to_rgb(color_name)[2]
 
-            dict_matplotlib_color["Y"] = y
-            dict_matplotlib_color["U"] = u
-            dict_matplotlib_color["V"] = v
+                dict_matplotlib_color["Y"] = y
+                dict_matplotlib_color["U"] = u
+                dict_matplotlib_color["V"] = v
 
-            list_colors.append(dict_matplotlib_color)
+                list_colors.append(dict_matplotlib_color)
 
-        self.data_matplotlib_colors = pd.DataFrame(list_colors)
+            self.data_matplotlib_colors = pd.DataFrame(list_colors)
+        except Exception as error:
+            logger.log('Error in get_matplotlib_color_data', exc_info=True, level='error')
+            logger.log(error, exc_info=True, level='error')
 
     def get_most_similar_color(self, query_color: list):
         """ Method to obtain the most similar Matplotlib color from a rgb list """
