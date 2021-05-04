@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import requests
 from matplotlib import colors
-from skimage.color import deltaE_cie76
+from skimage.color import rgb2lab, deltaE_ciede2000  # deltaE_cie76
 from data_core import util
 
 import config as cfg
@@ -65,6 +65,7 @@ class ColorExtractionwithMask(ColorExtraction):
             color_decomp_df_mat = pd.DataFrame()
             color_decomp_df_lk = pd.DataFrame()
             color_info_lk_df = pd.DataFrame()
+            color_info_matplotlib_df = pd.DataFrame()
             not_color_decomp_df = pd.DataFrame()
             list_computed_gc = []
             list_not_found_gc = []
@@ -79,6 +80,9 @@ class ColorExtractionwithMask(ColorExtraction):
             if os.path.exists(color_config.color_info_filename_lk):
                 color_info_lk_df = pd.read_csv(color_config.color_info_filename_lk)
                 color_info_lk_df.set_index('group_color', inplace=True)
+            if os.path.exists(color_config.color_info_filename_matplotlib):
+                color_info_matplotlib_df = pd.read_csv(color_config.color_info_filename_matplotlib)
+                color_info_matplotlib_df.set_index('group_color', inplace=True)
             if os.path.exists(color_config.color_decomposition_filename_lk):
                 color_decomp_df_lk = pd.read_csv(color_config.color_decomposition_filename_lk)
                 color_decomp_df_lk.set_index('group_color', inplace=True)
@@ -93,6 +97,7 @@ class ColorExtractionwithMask(ColorExtraction):
             list_gc_dict_lk = []
             list_gc_dict_matplotlib = []
             list_gc_info_lk = []
+            list_gc_info_matplotlib = []
             list_not_found_groupcolors = []
             if self.local:
                 suffix_query = f" where date_created >= {filtered}" if filtered else ""
@@ -110,19 +115,27 @@ class ColorExtractionwithMask(ColorExtraction):
                             color_distribution_lk = {color_name: 0. for color_name in sorted(self.dict_LK_colors.keys())}
                             color_distribution_matplotlib['group_color'] = group_color
                             color_distribution_lk['group_color'] = group_color
-                            dict_image = dict()
-                            dict_image["group_color"] = group_color
+                            dict_image_lk = dict()
+                            dict_image_lk["group_color"] = group_color
+                            dict_image_mat = dict()
+                            dict_image_mat["group_color"] = group_color
                             i = 1
                             for rgb_str, pct in dict_colors.items():
                                 matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
                                 lkcolor = self.get_most_similar_LK_color([int(x) for x in rgb_str.split("_")])
                                 color_distribution_matplotlib[matcolor] = pct
                                 color_distribution_lk[lkcolor] = pct
-                                dict_image["img_color_{}_rgb".format(i)] = rgb_str
-                                dict_image["lk_color_{}".format(i)] = lkcolor  # self.lk_colors_rgb_idx[color_lk]
-                                dict_image["pct_color_{}".format(i)] = pct
+                                dict_image_lk["img_color_{}_rgb".format(i)] = rgb_str
+                                dict_image_lk[
+                                    "lk_color_{}".format(i)] = lkcolor
+                                dict_image_lk["pct_color_{}".format(i)] = pct
+                                dict_image_mat["img_color_{}_rgb".format(i)] = rgb_str
+                                dict_image_mat[
+                                    "matplotlib_color_{}".format(i)] = matcolor
+                                dict_image_mat["pct_color_{}".format(i)] = pct
                                 i += 1
-                            list_gc_info_lk.append(dict_image)
+                            list_gc_info_lk.append(dict_image_lk)
+                            list_gc_info_matplotlib.append(dict_image_mat)
                             list_gc_dict_matplotlib.append(color_distribution_matplotlib)
                             list_gc_dict_lk.append(color_distribution_lk)
                         except Exception as error:
@@ -141,7 +154,7 @@ class ColorExtractionwithMask(ColorExtraction):
                             group_color = "_".join(re.findall(regex, file)[0])
 
                             try:
-                                if n_images_comp % 1000 == 0:
+                                if n_images_comp % 2000 == 0:
                                     pct = n_images_comp*100 // tot_images  # percentage of the computation done
                                     logger.log(f"Percentage of the images computed: {int(pct)} %")
                             except:
@@ -157,20 +170,27 @@ class ColorExtractionwithMask(ColorExtraction):
                                                              sorted(self.dict_LK_colors.keys())}
                                     color_distribution_matplotlib['group_color'] = group_color
                                     color_distribution_lk['group_color'] = group_color
-                                    dict_image = dict()
-                                    dict_image["group_color"] = group_color
+                                    dict_image_lk = dict()
+                                    dict_image_lk["group_color"] = group_color
+                                    dict_image_mat = dict()
+                                    dict_image_mat["group_color"] = group_color
                                     i = 1
                                     for rgb_str, pct in dict_colors.items():
                                         matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
                                         lkcolor = self.get_most_similar_LK_color([int(x) for x in rgb_str.split("_")])
                                         color_distribution_matplotlib[matcolor] = pct
                                         color_distribution_lk[lkcolor] = pct
-                                        dict_image["img_color_{}_rgb".format(i)] = rgb_str
-                                        dict_image[
-                                            "lk_color_{}".format(i)] = lkcolor  # self.lk_colors_rgb_idx[color_lk]
-                                        dict_image["pct_color_{}".format(i)] = pct
+                                        dict_image_lk["img_color_{}_rgb".format(i)] = rgb_str
+                                        dict_image_lk[
+                                            "lk_color_{}".format(i)] = lkcolor
+                                        dict_image_lk["pct_color_{}".format(i)] = pct
+                                        dict_image_mat["img_color_{}_rgb".format(i)] = rgb_str
+                                        dict_image_mat[
+                                            "matplotlib_color_{}".format(i)] = matcolor
+                                        dict_image_mat["pct_color_{}".format(i)] = pct
                                         i += 1
-                                    list_gc_info_lk.append(dict_image)
+                                    list_gc_info_lk.append(dict_image_lk)
+                                    list_gc_info_matplotlib.append(dict_image_mat)
                                     list_gc_dict_matplotlib.append(color_distribution_matplotlib)
                                     list_gc_dict_lk.append(color_distribution_lk)
                                 except Exception as error:
@@ -200,6 +220,11 @@ class ColorExtractionwithMask(ColorExtraction):
                 new_gc_info_lk_df.set_index('group_color', inplace=True)
                 color_info_lk_df = pd.concat([color_info_lk_df, new_gc_info_lk_df])
                 color_info_lk_df.to_csv(color_config.color_info_filename_lk)
+            if list_gc_info_matplotlib:
+                new_gc_info_matplotlib_df = pd.DataFrame(list_gc_info_matplotlib)
+                new_gc_info_matplotlib_df.set_index('group_color', inplace=True)
+                color_info_matplotlib_df = pd.concat([color_info_matplotlib_df, new_gc_info_matplotlib_df])
+                color_info_matplotlib_df.to_csv(color_config.color_info_filename_matplotlib)
             if list_not_found_groupcolors:
                 not_found_gc_df = pd.concat([not_color_decomp_df, pd.DataFrame(list_not_found_groupcolors)])
                 not_found_gc_df.to_csv(color_config.not_color_decomposition_filename, index=False)
@@ -246,9 +271,13 @@ class ColorExtractionwithMask(ColorExtraction):
                     # We normalize the percentages of the colors extracted
                     dict_image_colors = {k: np.round(v / sum_pct, 2) for k, v in dict_image_colors.items()}
             else:
-                dict_image_colors = {"255_255_255": 1}
+                return None  # {"255_255_255": 1}
 
-            return {k: v for k, v in sorted(dict_image_colors.items(), key=lambda x: x[1], reverse=True)}
+            sum_pct = np.round(sum(dict_image_colors.values()), 2)
+            dict_image_colors = {k: v for k, v in sorted(dict_image_colors.items(), key=lambda x: x[1], reverse=True)}
+            if sum_pct == 0.99:
+                dict_image_colors[list(dict_image_colors.keys())[0]] += 0.01  # add 0.01 to make the 100 pct
+            return dict_image_colors  # {k: v for k, v in sorted(dict_image_colors.items(), key=lambda x: x[1], reverse=True)}
         except Exception as error:
             # print(error)
             # print("There has been an error removing the background.")
@@ -283,6 +312,7 @@ class ColorExtractionwithMask(ColorExtraction):
 
                 red_st, green_st, blue_st = self.dict_LK_colors[color_name]
                 red, green, blue = self.lk_colors_rgb[color_name]
+                l, a, b = rgb2lab([[[red_st, green_st, blue_st]]])[0][0]
                 y, u, v = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
 
                 dict_colors["Red"] = red
@@ -292,6 +322,10 @@ class ColorExtractionwithMask(ColorExtraction):
                 dict_colors["Red_st"] = red_st
                 dict_colors["Green_st"] = green_st
                 dict_colors["Blue_st"] = blue_st
+
+                dict_colors["L"] = l
+                dict_colors["A"] = a
+                dict_colors["B"] = b
 
                 dict_colors["Y"] = y
                 dict_colors["U"] = u
@@ -314,6 +348,7 @@ class ColorExtractionwithMask(ColorExtraction):
 
                 red_st, green_st, blue_st = self.get_rgb_standard(color_name)
                 red, green, blue = self.standardize_rgb_inverse([red_st, green_st, blue_st])
+                l, a, b = rgb2lab([[[red_st, green_st, blue_st]]])[0][0]
                 y, u, v = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
 
                 dict_matplotlib_color["Red"] = red
@@ -323,6 +358,10 @@ class ColorExtractionwithMask(ColorExtraction):
                 dict_matplotlib_color["Red_st"] = colors.to_rgb(color_name)[0]
                 dict_matplotlib_color["Green_st"] = colors.to_rgb(color_name)[1]
                 dict_matplotlib_color["Blue_st"] = colors.to_rgb(color_name)[2]
+
+                dict_matplotlib_color["L"] = l
+                dict_matplotlib_color["A"] = a
+                dict_matplotlib_color["B"] = b
 
                 dict_matplotlib_color["Y"] = y
                 dict_matplotlib_color["U"] = u
@@ -338,8 +377,9 @@ class ColorExtractionwithMask(ColorExtraction):
     def get_most_similar_color(self, query_color: list):
         """ Method to obtain the most similar Matplotlib color from a rgb list """
         red_st, green_st, blue_st = self.standardize_rgb(query_color)
-        distances = deltaE_cie76([red_st, green_st, blue_st],
-                                 self.data_matplotlib_colors[["Red_st", "Green_st", "Blue_st"]].to_numpy())
+        l, a, b = rgb2lab([[[red_st, green_st, blue_st]]])[0][0]
+        # qué es argumento kL? se pueden extraer los colores directamente en LAB?
+        distances = deltaE_ciede2000([l, a, b], self.data_matplotlib_colors[["L", "A", "B"]].to_numpy())
 
         idx_min = np.argmin(distances)
         similar_color = self.data_matplotlib_colors.iloc[idx_min].values
@@ -348,8 +388,11 @@ class ColorExtractionwithMask(ColorExtraction):
     def get_most_similar_LK_color(self, query_color: list):
         """ Method to obtain the most similar LK color from a rgb list """
         red_st, green_st, blue_st = self.standardize_rgb(query_color)
-        distances = deltaE_cie76([red_st, green_st, blue_st],
-                                 self.data_LK_colors[["Red_st", "Green_st", "Blue_st"]].to_numpy())
+        l, a, b = rgb2lab([[[red_st, green_st, blue_st]]])[0][0]
+        # qué es argumento kL? se pueden extraer los colores directamente en LAB?
+        distances = deltaE_ciede2000([l, a, b], self.data_LK_colors[["L", "A", "B"]].to_numpy())
+        # distances = deltaE_cie76([red_st, green_st, blue_st],
+        #                          self.data_LK_colors[["Red_st", "Green_st", "Blue_st"]].to_numpy())
 
         idx_min = np.argmin(distances)
         similar_color = self.data_LK_colors.iloc[idx_min].values
@@ -358,5 +401,36 @@ class ColorExtractionwithMask(ColorExtraction):
 
 if __name__ == "__main__":
     cem = ColorExtractionwithMask(local=True)
-    df_gc_color_distributions = cem.get_LK_images_info('2020-10-01')
+    # df_gc_color_distributions = cem.get_LK_images_info('2020-10-01')
+    # Get the rgb decomposition of Lookiero colors
+    cem.get_LK_color()
+    # Get the yuv, standardize data of Lookiero colors
+    cem.get_LK_color_data()
+    cem.get_matplotlib_color_data()
+    list_group_colors = ['B475_C2']
+    for group_color in list_group_colors:
+        group, color = group_color.split("_")
+        image = cem.get_image_from_s3(group, color)
+        dict_colors = cem.get_colors_from_image(image)
+        color_distribution_lk = {color_name: 0. for color_name in sorted(cem.dict_LK_colors.keys())}
+        color_distribution_lk['group_color'] = group_color
+        dict_image_lk = dict()
+        dict_image_lk["group_color"] = group_color
+        dict_image_mat = dict()
+        dict_image_mat["group_color"] = group_color
+        i = 1
+        for rgb_str, pct in dict_colors.items():
+            lkcolor = cem.get_most_similar_LK_color([int(x) for x in rgb_str.split("_")])
+            matcolor = cem.get_most_similar_color([int(x) for x in rgb_str.split("_")])
+            color_distribution_lk[lkcolor] = pct
+            dict_image_lk["img_color_{}_rgb".format(i)] = rgb_str
+            dict_image_lk[
+                "lk_color_{}".format(i)] = lkcolor
+            dict_image_lk["pct_color_{}".format(i)] = pct
+            dict_image_mat["img_color_{}_rgb".format(i)] = rgb_str
+            dict_image_mat[
+                "matplotlib_color_{}".format(i)] = matcolor
+            dict_image_mat["pct_color_{}".format(i)] = pct
+            i += 1
+
     print("Done")
