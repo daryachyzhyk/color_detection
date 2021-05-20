@@ -33,24 +33,37 @@ class ColorExtraction:
                         'password': 'awspassword',
                         'host': '127.0.0.1',
                         'port': 3307}
-            db_catalog = {'database': 'buying_back',
-                        'user': 'buying_back_ro',
-                        'password': 'ShuperShekret',
-                        'host': '127.0.0.1',
-                        'port': 5433}
+            # db_catalog = {'database': 'buying_back',
+            #               'user': 'buying_back_ro',
+            #               'password': 'ShuperShekret',
+            #               'host': '127.0.0.1',
+            #               'port': 5433}
+            db_catalog = {'database': 'catalog_back',
+                          'user': 'catalog_back',
+                          'password': 'Lookiero2019',
+                          'host': '127.0.0.1',
+                          'port': 5433}
         else:
             db_mysql = {'database': 'lookiero',
                         'user': 'awsuser',
                         'password': 'awspassword',
                         'host': 'db-data-lake.lookiero.tech',
                         'port': 3306}
-            # db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
+
             db_catalog = {'host': '127.0.0.1',
+                          # db_catalog = {'host': 'db-catalog-back.dev.envs.lookiero.tech',
                           # 'port': 5432,
                           'port': 5433,
-                          'dbname': 'buying_back',
-                          'user': 'buying_back_ro',
-                          'password': 'ShuperShekret'}
+                          'dbname': 'catalog_back',
+                          'user': 'catalog_back',
+                          'password': 'Lookiero2019'}
+            # db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
+            # db_catalog = {'host': '127.0.0.1',
+            #               # 'port': 5432,
+            #               'port': 5433,
+            #               'dbname': 'buying_back',
+            #               'user': 'buying_back_ro',
+            #               'password': 'ShuperShekret'}
 
         self.conn_mysql = MySQLdb.connect(**db_mysql)
         self.conn_catalog = psycopg2.connect(**db_catalog)
@@ -81,7 +94,8 @@ class ColorExtraction:
             rgb_color = list(np.round(colors.hex2color("".join(["#", row[1].lower()])), 2))
             self.dict_colors[row[0]] = rgb_color
 
-        self.lk_colors_rgb = {k: [self.standardize_rgb_inverse(v)[0], self.standardize_rgb_inverse(v)[1], self.standardize_rgb_inverse(v)[2]]
+        self.lk_colors_rgb = {k: [self.standardize_rgb_inverse(v)[0], self.standardize_rgb_inverse(v)[1],
+                                  self.standardize_rgb_inverse(v)[2]]
                               for k, v in self.dict_colors.items()}
         self.lk_colors_rgb_idx = {"_".join([str(v[0]), str(v[1]), str(v[2])]): k for k, v in self.lk_colors_rgb.items()}
 
@@ -89,12 +103,13 @@ class ColorExtraction:
 
         query = "select distinct i.`_group_id` as 'group', v.color from variations v, items i where v._group_id=i._group_id" \
                 "{};".format(" and v.date_created > '2020-10-01'" if filter else "")
-                # " and i.family not in (14, 15, 16, 17, 18, 19, 24, 27, 28, 29, 30, 31){};".format(" and v.date_created > '2020-10-01'" if filter else "")
+        # " and i.family not in (14, 15, 16, 17, 18, 19, 24, 27, 28, 29, 30, 31){};".format(" and v.date_created > '2020-10-01'" if filter else "")
         data_group = pd.read_sql_query(query, self.conn_mysql)
         self.get_LK_color_data()
         df_extracted_group_colors = self.load_extracted_colors()
         if not df_extracted_group_colors.empty:
-            list_extracted_group_colors = np.array(["_".join(x) for x in df_extracted_group_colors[["group", "color"]].values])
+            list_extracted_group_colors = np.array(
+                ["_".join(x) for x in df_extracted_group_colors[["group", "color"]].values])
         else:
             list_extracted_group_colors = []
 
@@ -167,14 +182,15 @@ class ColorExtraction:
         try:
             colors_img, pixel_count = extcolors.extract_from_image(image)
             if len(colors_img) > 1:
-                if colors_img[0][0] == (255, 255, 255) and colors_img[0][1]/pixel_count > cfg.white_threshold:
-                    total_not_white_pixels = int(pixel_count*(1 - cfg.white_threshold))
+                if colors_img[0][0] == (255, 255, 255) and colors_img[0][1] / pixel_count > cfg.white_threshold:
+                    total_not_white_pixels = int(pixel_count * (1 - cfg.white_threshold))
                 else:
                     white_pixels = [x[1] for x in colors_img if x[0] == (255, 255, 255)][0]
                     total_not_white_pixels = pixel_count - white_pixels
                 dict_image_colors = {"_".join([str(c) for c in k]): np.round(v / total_not_white_pixels, 2)
                                      for k, v in colors_img
-                                     if (k != (255, 255, 255) and np.round(v / total_not_white_pixels, 2) >= cfg.threshold_min_pct)}
+                                     if (k != (255, 255, 255) and np.round(v / total_not_white_pixels,
+                                                                           2) >= cfg.threshold_min_pct)}
                 sum_pct = sum(dict_image_colors.values())
                 if sum_pct < 1:
                     dict_image_colors["255_255_255"] = np.round(1 - sum_pct, 2)
@@ -204,13 +220,13 @@ class ColorExtraction:
         """
         Transform from RGB between [0, 1] to RGB values between [0, 255]
         """
-        return int(255*rgb_color[0]), int(255*rgb_color[1]), int(255*rgb_color[2])
+        return int(255 * rgb_color[0]), int(255 * rgb_color[1]), int(255 * rgb_color[2])
 
     def standardize_rgb(self, rgb_color):
         """
         Transform from RGB between [0, 255] to RGB values between [0, 1]
         """
-        return rgb_color[0]/255, rgb_color[1]/255, rgb_color[2]/255
+        return rgb_color[0] / 255, rgb_color[1] / 255, rgb_color[2] / 255
 
     def get_color_data(self):
         """ Method to extract all the available colors in Matplotlib with their information."""
@@ -274,13 +290,12 @@ class ColorExtraction:
         red_st, green_st, blue_st = self.standardize_rgb(query_color)
         # y_query, u_query, v_query = self.transform_rgb_to_yuv([red_st, green_st, blue_st])
         # distances = np.sum(([y_query, u_query, v_query] - self.data_colors[["Y", "U", "V"]].to_numpy())**2, axis=1)
-        distances = deltaE_cie76([red_st, green_st, blue_st], self.data_colors[["Red_st", "Green_st", "Blue_st"]].to_numpy())
-
+        distances = deltaE_cie76([red_st, green_st, blue_st],
+                                 self.data_colors[["Red_st", "Green_st", "Blue_st"]].to_numpy())
 
         idx_min = np.argmin(distances)
         similar_color = self.data_colors.iloc[idx_min].values
         return "_".join([str(x) for x in similar_color[1:4]])
-
 
     def get_image_representation(self, image):
         """
@@ -289,8 +304,10 @@ class ColorExtraction:
 
         dict_colors = self.get_colors_from_image(image)
         if dict_colors:
-            dict_similar_colors = {k: self.get_most_similar_color([int(x) for x in k.split("_")]) for k in dict_colors.keys()}
-            dict_similar_colors_pct = {self.get_most_similar_color([int(x) for x in k.split("_")]): v for k, v in dict_colors.items()}
+            dict_similar_colors = {k: self.get_most_similar_color([int(x) for x in k.split("_")]) for k in
+                                   dict_colors.keys()}
+            dict_similar_colors_pct = {self.get_most_similar_color([int(x) for x in k.split("_")]): v for k, v in
+                                       dict_colors.items()}
             return dict_similar_colors, dict_similar_colors_pct
         else:
             return None, None
