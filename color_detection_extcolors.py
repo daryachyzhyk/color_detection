@@ -33,16 +33,16 @@ class ColorExtraction:
                         'password': 'awspassword',
                         'host': '127.0.0.1',
                         'port': 3307}
-            # db_catalog = {'database': 'buying_back',
-            #               'user': 'buying_back_ro',
-            #               'password': 'ShuperShekret',
-            #               'host': '127.0.0.1',
-            #               'port': 5433}
-            db_catalog = {'database': 'catalog_back',
-                          'user': 'catalog_back',
-                          'password': 'Lookiero2019',
+            db_catalog = {'database': 'buying_back',
+                          'user': 'buying_back_ro',
+                          'password': 'ShuperShekret',
                           'host': '127.0.0.1',
                           'port': 5433}
+            # db_catalog = {'database': 'catalog_back',
+            #               'user': 'catalog_back',
+            #               'password': 'Lookiero2019',
+            #               'host': '127.0.0.1',
+            #               'port': 5433}
         else:
             db_mysql = {'database': 'lookiero',
                         'user': 'awsuser',
@@ -50,20 +50,20 @@ class ColorExtraction:
                         'host': 'db-data-lake.lookiero.tech',
                         'port': 3306}
 
-            db_catalog = {'host': '127.0.0.1',
-                          # db_catalog = {'host': 'db-catalog-back.dev.envs.lookiero.tech',
-                          # 'port': 5432,
-                          'port': 5433,
-                          'dbname': 'catalog_back',
-                          'user': 'catalog_back',
-                          'password': 'Lookiero2019'}
-            # db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
             # db_catalog = {'host': '127.0.0.1',
+            #               # db_catalog = {'host': 'db-catalog-back.dev.envs.lookiero.tech',
             #               # 'port': 5432,
             #               'port': 5433,
-            #               'dbname': 'buying_back',
-            #               'user': 'buying_back_ro',
-            #               'password': 'ShuperShekret'}
+            #               'dbname': 'catalog_back',
+            #               'user': 'catalog_back',
+            #               'password': 'Lookiero2019'}
+            # db_catalog = {'host': 'db-buying-back-slave.lookiero.tech',
+            db_catalog = {'host': '127.0.0.1',
+                          # 'port': 5432,
+                          'port': 5433,
+                          'dbname': 'buying_back',
+                          'user': 'buying_back_ro',
+                          'password': 'ShuperShekret'}
 
         self.conn_mysql = MySQLdb.connect(**db_mysql)
         self.conn_catalog = psycopg2.connect(**db_catalog)
