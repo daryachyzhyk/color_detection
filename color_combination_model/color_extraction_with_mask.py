@@ -93,10 +93,11 @@ class ColorExtractionwithMask(ColorExtraction):
             logger.log(f'Error loading get_image_from_s3, groupc:{group}, color: {color}', exc_info=True, level='error')
             return None
 
-    def get_LK_images_info(self, filtered=None):
+    def get_LK_images_info(self, filtered_season=None, filtered_date=None):
         """
         Info: Method to extract all the different group_colors existing in the LK catalog
-        :param filtered Refers to the earliest date from which you would like to get clothes from.
+        :param filtered_date:  Refers to the earliest date from which you would like to get clothes.
+        :param filtered_season:  Refers to the earliest season from which you would like to get clothes.
         """
         try:
             color_decomp_df_mat = pd.DataFrame()
@@ -160,15 +161,21 @@ class ColorExtractionwithMask(ColorExtraction):
             # En algunos casos, el color detectado está tan cerca de uno existente, que merece la pena quedarse con él.
             # Para ello existe la clave 'exception' y la 'dist_exception' máxima con el matcheo para fiarnos del match
 
-
-
             if self.local:
-                suffix_query = f" where date_created >= {filtered}" if filtered else ""
-                query = f"select distinct `_group_id` as 'group', color from variations{suffix_query};"
+                suffix_query = ""
+                if filtered_date and filtered_season:
+                    suffix_query = f" where date_created >= '{filtered_date}' and season >= {filtered_season}" \
+                        if filtered_date and filtered_season else ""
+                elif filtered_date:
+                    suffix_query = f" where date_created >= '{filtered_date}'" if filtered_date else ""
+                elif filtered_season:
+                    suffix_query = f" where season >= {filtered_season}" if filtered_season else ""
+
+                query = f"select distinct `_group_id` as 'group', color, season from variations{suffix_query};"
 
                 data_group = pd.read_sql_query(query, self.conn_mysql)
 
-                for group, color in tqdm.tqdm(data_group.values):
+                for group, color, season in tqdm.tqdm(data_group.values):
                     group_color = "_".join([group, color])
                     if group_color not in list_computed_gc and group_color not in list_not_found_gc:
                         try:
@@ -256,7 +263,7 @@ class ColorExtractionwithMask(ColorExtraction):
                             for clr, pct in sorted(color_distribution_matplotlib.items(), key=lambda x: x[1],
                                                    reverse=True):
                                 if pct > 0.:
-                                    dict_info_mat["lk_color_{}".format(i)] = clr
+                                    dict_info_mat["matplotlib_color_{}".format(i)] = clr
                                     dict_info_mat["pct_color_{}".format(i)] = pct
                                     i += 1
                                 else:
@@ -388,7 +395,7 @@ class ColorExtractionwithMask(ColorExtraction):
                                                            key=lambda x: x[1],
                                                            reverse=True):
                                         if pct > 0.:
-                                            dict_info_mat["lk_color_{}".format(i)] = clr
+                                            dict_info_mat["matplotlib_color_{}".format(i)] = clr
                                             dict_info_mat["pct_color_{}".format(i)] = pct
                                             i += 1
                                         else:
@@ -629,7 +636,8 @@ class ColorExtractionwithMask(ColorExtraction):
 
 if __name__ == "__main__":
     cem = ColorExtractionwithMask(local=True)
-    # df_gc_color_distributions = cem.get_LK_images_info('2020-10-01')
+    df_gc_color_distributions = cem.get_LK_images_info(filtered_season=9)
+    """
     # Get the rgb decomposition of Lookiero colors
     cem.get_LK_color()
     # Get the yuv, standardize data of Lookiero colors
@@ -738,4 +746,5 @@ if __name__ == "__main__":
         color_distribution_lk_heuristic['group_color'] = group_color
         color_distribution_matplotlib['group_color'] = group_color
         print(f"{group_color} done.")
+    """
     print("Done")
