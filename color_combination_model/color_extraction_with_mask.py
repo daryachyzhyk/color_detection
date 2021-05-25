@@ -8,6 +8,7 @@ import tqdm
 import numpy as np
 import pandas as pd
 import requests
+import urllib.request as url_request
 from matplotlib import colors
 from skimage.color import rgb2lab, deltaE_ciede2000  # deltaE_cie76
 from data_core import util
@@ -67,21 +68,29 @@ class ColorExtractionwithMask(ColorExtraction):
                 }
             }
 
-    def get_image_from_s3(self, group, color):
+    def get_image_from_s3(self, group, color, save=True, path='/var/lib/lookiero/images'):
         """
         Return the main image from S3 for a given group and color.
         """
         group_color = "".join([group, color])
         img_url = 'https://s3-eu-west-1.amazonaws.com/catalogo.labs/{}/{}.jpg'.format(group, group_color)
 
-        try:
-            response = requests.get(img_url)
-            image_bytes = io.BytesIO(response.content)
-            file_bytes = np.asarray(bytearray(image_bytes.read()), dtype=np.uint8)
-            img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-            # image = PIL.Image.open(image_bytes)
+        if save:
+            try:
+                img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg'))
+            except:
+                try:
+                    url_request.urlretrieve(img_url, path + '/' + group_color + '.jpg')
+                    img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg'))
+                except:
+                    logger.log(f'Error loading get_image_from_s3, groupc:{group}, color: {color}', exc_info=True,
+                               level='error')
+                    img = None
             return img
+        try:
+            return np.array(PIL.Image.open(requests.get(img_url, stream=True).raw))
         except:
+            logger.log(f'Error loading get_image_from_s3, groupc:{group}, color: {color}', exc_info=True, level='error')
             return None
 
     def get_LK_images_info(self, filtered=None):

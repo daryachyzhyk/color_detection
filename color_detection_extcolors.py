@@ -9,6 +9,7 @@ import psycopg2
 from matplotlib import colors
 from skimage.color import deltaE_cie76
 import requests, io
+import urllib.request as url_request
 import os
 import config as cfg
 from data_core import util
@@ -138,20 +139,29 @@ class ColorExtraction:
         data.to_csv(os.path.join(cfg.path_data, "LK_colors_info.csv"), index=False)
         return data
 
-    def get_image_from_s3(self, group, color):
+    def get_image_from_s3(self, group, color, save=True, path='/var/lib/lookiero/images'):
         """
         Return the main image from S3 for a given group and color.
         """
-
         group_color = "".join([group, color])
         img_url = 'https://s3-eu-west-1.amazonaws.com/catalogo.labs/{}/{}.jpg'.format(group, group_color)
 
+        if save:
+            try:
+                img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg'))
+            except:
+                try:
+                    url_request.urlretrieve(img_url, path + '/' + group_color + '.jpg')
+                    img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg'))
+                except:
+                    logger.log(f'Error loading get_image_from_s3, groupc:{group}, color: {color}', exc_info=True,
+                               level='error')
+                    img = None
+            return img
         try:
-            response = requests.get(img_url)
-            image_bytes = io.BytesIO(response.content)
-            image = PIL.Image.open(image_bytes)
-            return image
+            return np.array(PIL.Image.open(requests.get(img_url, stream=True).raw))
         except:
+            logger.log(f'Error loading get_image_from_s3, groupc:{group}, color: {color}', exc_info=True, level='error')
             return None
 
     def get_image_color_info(self, image):
