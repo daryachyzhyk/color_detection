@@ -210,6 +210,11 @@ class ColorExtractionwithMask(ColorExtraction):
                     # if group_color not in list_computed_gc and group_color not in list_not_found_gc:
                     try:
                         image = self.get_image_from_s3(group, color)
+                        if image is None:
+                            list_not_found_groupcolors.append({'group_color': group_color})
+                            n_images_comp += 1
+                            continue
+
                         dict_colors = self.extract_colors_from_image(image, group_color, tolerance=12)
                         color_distribution_lk = {color_name: 0. for color_name in
                                                  sorted(self.dict_LK_colors.keys())}
@@ -370,6 +375,12 @@ class ColorExtractionwithMask(ColorExtraction):
 
                     try:
                         image = self.get_image_from_s3(group, color)
+                        if image is None:
+                            # Image not found
+                            list_not_found_groupcolors.append({'group_color': group_color})
+                            n_images_comp += 1
+                            continue
+
                         dict_colors = self.extract_colors_from_image(image, group_color, tolerance=12)
                         color_distribution_lk = {color_name: 0. for color_name in
                                                  sorted(self.dict_LK_colors.keys())}
@@ -730,6 +741,10 @@ if __name__ == "__main__":
     for group_color in list_group_colors:
         group, color = group_color.split("_")
         image = cem.get_image_from_s3(group, color)
+        if image is None:
+            # Image not found
+            print(f"Error descargando la imagen {group_color}. Not found or wrong url.")
+            continue
         dict_colors = cem.extract_colors_from_image(image, group_color, tolerance=12)
         color_distribution_lk = {color_name: 0. for color_name in sorted(cem.dict_LK_colors.keys())}
         color_distribution_lk_heuristic = {color_name: 0. for color_name in sorted(cem.dict_LK_colors.keys())}
