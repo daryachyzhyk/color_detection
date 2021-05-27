@@ -77,18 +77,36 @@ class ColorExtractionwithMask(ColorExtraction):
 
         if save:
             try:
-                img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg'))
+                img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg').convert('RGB'))
             except:
                 try:
                     url_request.urlretrieve(img_url, path + '/' + group_color + '.jpg')
-                    img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg'))
+                    img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg').convert('RGB')) # .convert('RGB')
                 except:
-                    logger.log(f'Error loading get_image_from_s3, groupc:{group}, color: {color}', exc_info=True,
-                               level='error')
-                    img = None
+                    try:
+                        img_url = 'https://s3-eu-west-1.amazonaws.com/catalogo.labs/{}/{}.jpeg'.format(group, group_color)
+                        url_request.urlretrieve(img_url, path + '/' + group_color + '.jpg')
+                        img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg').convert('RGB'))
+                    except:
+                        try:
+                            img_url = 'https://s3-eu-west-1.amazonaws.com/catalogo.labs/{}/{}.JPG'.format(group,
+                                                                                                           group_color)
+                            url_request.urlretrieve(img_url, path + '/' + group_color + '.jpg')
+                            img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg').convert('RGB'))
+                        except:
+                            try:
+                                img_url = 'https://s3-eu-west-1.amazonaws.com/catalogo.labs/{}/{}.JPEG'.format(group,
+                                                                                                               group_color)
+                                url_request.urlretrieve(img_url, path + '/' + group_color + '.jpg')
+                                img = np.array(PIL.Image.open(path + '/' + group_color + '.jpg').convert('RGB'))
+                            except:
+                                logger.log(f'Error loading get_image_from_s3, groupc:{group}, color: {color}',
+                                           exc_info=True,
+                                           level='error')
+                                img = None
             return img
         try:
-            return np.array(PIL.Image.open(requests.get(img_url, stream=True).raw))
+            return np.array(PIL.Image.open(requests.get(img_url, stream=True).raw).convert('RGB'))
         except:
             logger.log(f'Error loading get_image_from_s3, groupc:{group}, color: {color}', exc_info=True, level='error')
             return None
@@ -199,101 +217,122 @@ class ColorExtractionwithMask(ColorExtraction):
                                                            sorted(self.dict_LK_colors.keys())}
                         color_distribution_matplotlib = {color_name: 0. for color_name in colors.cnames.keys()}
 
-                        dict_image = dict()
-                        dict_image["group_color"] = group_color
-                        i = 1
-                        # Match each detected color to a similar one in the database
-                        if color in self.dict_heuristics:
-                            # Las heurísticas pueden aplicar
-                            for rgb_str, pct in dict_colors.items():
-                                dict_image["img_color_{}_rgb".format(i)] = rgb_str
-                                dict_image["pct_color_{}".format(i)] = pct
-                                matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
-                                lkcolor, dist_lk = self.get_most_similar_LK_color(
-                                    [int(x) for x in rgb_str.split("_")])
+                        if dict_colors is not None:
+                            dict_image = dict()
+                            dict_image["group_color"] = group_color
+                            i = 1
+                            # Match each detected color to a similar one in the database
+                            if color in self.dict_heuristics:
+                                # Las heurísticas pueden aplicar
+                                for rgb_str, pct in dict_colors.items():
+                                    dict_image["img_color_{}_rgb".format(i)] = rgb_str
+                                    dict_image["pct_color_{}".format(i)] = pct
+                                    matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
+                                    lkcolor, dist_lk = self.get_most_similar_LK_color(
+                                        [int(x) for x in rgb_str.split("_")])
 
-                                # Comprobamos si se cumplen las heuristicas
-                                if lkcolor in self.dict_heuristics[color]["values"]:
-                                    if self.dict_heuristics[color]["exception"] and \
-                                            dist_lk <= self.dict_heuristics[color]["dist_exception"]:
-                                        lkcolor_heuristic = lkcolor
+                                    # Comprobamos si se cumplen las heuristicas
+                                    if lkcolor in self.dict_heuristics[color]["values"]:
+                                        if self.dict_heuristics[color]["exception"] and \
+                                                dist_lk <= self.dict_heuristics[color]["dist_exception"]:
+                                            lkcolor_heuristic = lkcolor
+                                        else:
+                                            lkcolor_heuristic = color
                                     else:
+                                        lkcolor_heuristic = lkcolor
+
+                                    if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
                                         lkcolor_heuristic = color
-                                else:
+
+                                    # We assign the percentage of the color to the dictionary
+                                    color_distribution_matplotlib[matcolor] += pct
+                                    color_distribution_lk[lkcolor] += pct
+                                    color_distribution_lk_heuristic[lkcolor_heuristic] += pct
+                                    i += 1
+                            else:
+                                # No afectan las heurísticas
+                                for rgb_str, pct in dict_colors.items():
+                                    dict_image["img_color_{}_rgb".format(i)] = rgb_str
+                                    dict_image["pct_color_{}".format(i)] = pct
+                                    matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
+                                    lkcolor, dist_lk = self.get_most_similar_LK_color(
+                                        [int(x) for x in rgb_str.split("_")])
                                     lkcolor_heuristic = lkcolor
 
-                                if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
-                                    lkcolor_heuristic = color
+                                    if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
+                                        lkcolor_heuristic = color
 
-                                # We assign the percentage of the color to the dictionary
-                                color_distribution_matplotlib[matcolor] += pct
-                                color_distribution_lk[lkcolor] += pct
-                                color_distribution_lk_heuristic[lkcolor_heuristic] += pct
-                                i += 1
+                                    # We assign the percentage of the color to the dictionary
+                                    color_distribution_matplotlib[matcolor] += pct
+                                    color_distribution_lk[lkcolor] += pct
+                                    color_distribution_lk_heuristic[lkcolor_heuristic] += pct
+                                    i += 1
+
+                            # Ordenamos los colores por porcentaje
+                            dict_info_lk = dict()
+                            dict_info_lk["group_color"] = group_color
+                            dict_info_lk_heuristic = dict()
+                            dict_info_lk_heuristic["group_color"] = group_color
+                            dict_info_mat = dict()
+                            dict_info_mat["group_color"] = group_color
+
+                            i = 1
+                            for clr, pct in sorted(color_distribution_lk.items(), key=lambda x: x[1],
+                                                   reverse=True):
+                                if pct > 0.:
+                                    dict_info_lk["lk_color_{}".format(i)] = clr
+                                    dict_info_lk["pct_color_{}".format(i)] = pct
+                                    i += 1
+                                else:
+                                    break
+                            i = 1
+                            for clr, pct in sorted(color_distribution_lk_heuristic.items(), key=lambda x: x[1],
+                                                   reverse=True):
+                                if pct > 0.:
+                                    dict_info_lk_heuristic["lk_color_{}".format(i)] = clr
+                                    dict_info_lk_heuristic["pct_color_{}".format(i)] = pct
+                                    i += 1
+                                else:
+                                    break
+                            i = 1
+                            for clr, pct in sorted(color_distribution_matplotlib.items(), key=lambda x: x[1],
+                                                   reverse=True):
+                                if pct > 0.:
+                                    dict_info_mat["matplotlib_color_{}".format(i)] = clr
+                                    dict_info_mat["pct_color_{}".format(i)] = pct
+                                    i += 1
+                                else:
+                                    break
+                            dict_info_lk["successful_extraction"] = 1
+                            dict_info_lk_heuristic["successful_extraction"] = 1
+                            color_distribution_lk['group_color'] = group_color
+                            color_distribution_lk_heuristic['group_color'] = group_color
+                            color_distribution_matplotlib['group_color'] = group_color
+                            list_gc_info_matplotlib.append(dict_info_mat)
+                            list_gc_dict_lk.append(color_distribution_lk)
+                            list_gc_dict_lk_heuristic.append(color_distribution_lk_heuristic)
+                            list_gc_dict_matplotlib.append(color_distribution_matplotlib)
+                            list_gc_image_color_detected.append(dict_image)
                         else:
-                            # No afectan las heurísticas
-                            for rgb_str, pct in dict_colors.items():
-                                dict_image["img_color_{}_rgb".format(i)] = rgb_str
-                                dict_image["pct_color_{}".format(i)] = pct
-                                matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
-                                lkcolor, dist_lk = self.get_most_similar_LK_color(
-                                    [int(x) for x in rgb_str.split("_")])
-                                lkcolor_heuristic = lkcolor
+                            # Extraction failed
+                            dict_info_lk = dict()
+                            dict_info_lk["group_color"] = group_color
+                            dict_info_lk["lk_color_1"] = color
+                            dict_info_lk["pct_color_1"] = 1.0
+                            dict_info_lk["lk_color_2"] = color
+                            dict_info_lk["pct_color_2"] = 1.0
+                            dict_info_lk["successful_extraction"] = 0
 
-                                if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
-                                    lkcolor_heuristic = color
-
-                                # We assign the percentage of the color to the dictionary
-                                color_distribution_matplotlib[matcolor] += pct
-                                color_distribution_lk[lkcolor] += pct
-                                color_distribution_lk_heuristic[lkcolor_heuristic] += pct
-                                i += 1
-
-                        # Ordenamos los colores por porcentaje
-                        dict_info_lk = dict()
-                        dict_info_lk["group_color"] = group_color
-                        dict_info_lk_heuristic = dict()
-                        dict_info_lk_heuristic["group_color"] = group_color
-                        dict_info_mat = dict()
-                        dict_info_mat["group_color"] = group_color
-
-                        i = 1
-                        for clr, pct in sorted(color_distribution_lk.items(), key=lambda x: x[1],
-                                               reverse=True):
-                            if pct > 0.:
-                                dict_info_lk["lk_color_{}".format(i)] = clr
-                                dict_info_lk["pct_color_{}".format(i)] = pct
-                                i += 1
-                            else:
-                                break
-                        i = 1
-                        for clr, pct in sorted(color_distribution_lk_heuristic.items(), key=lambda x: x[1],
-                                               reverse=True):
-                            if pct > 0.:
-                                dict_info_lk_heuristic["lk_color_{}".format(i)] = clr
-                                dict_info_lk_heuristic["pct_color_{}".format(i)] = pct
-                                i += 1
-                            else:
-                                break
-                        i = 1
-                        for clr, pct in sorted(color_distribution_matplotlib.items(), key=lambda x: x[1],
-                                               reverse=True):
-                            if pct > 0.:
-                                dict_info_mat["matplotlib_color_{}".format(i)] = clr
-                                dict_info_mat["pct_color_{}".format(i)] = pct
-                                i += 1
-                            else:
-                                break
-                        color_distribution_lk['group_color'] = group_color
-                        color_distribution_lk_heuristic['group_color'] = group_color
-                        color_distribution_matplotlib['group_color'] = group_color
+                            dict_info_lk_heuristic = dict()
+                            dict_info_lk_heuristic["group_color"] = group_color
+                            dict_info_lk_heuristic["lk_color_1"] = color
+                            dict_info_lk_heuristic["pct_color_1"] = 1.0
+                            dict_info_lk_heuristic["lk_color_2"] = color
+                            dict_info_lk_heuristic["pct_color_2"] = 1.0
+                            dict_info_lk_heuristic["successful_extraction"] = 0
                         list_gc_info_lk.append(dict_info_lk)
                         list_gc_info_lk_heuristic.append(dict_info_lk_heuristic)
-                        list_gc_info_matplotlib.append(dict_info_mat)
-                        list_gc_dict_lk.append(color_distribution_lk)
-                        list_gc_dict_lk_heuristic.append(color_distribution_lk_heuristic)
-                        list_gc_dict_matplotlib.append(color_distribution_matplotlib)
-                        list_gc_image_color_detected.append(dict_image)
+
                         n_images_comp += 1
                     except Exception as error:
                         logger.log(f'Error in computing {group_color}', exc_info=True, level='error')
@@ -329,9 +368,7 @@ class ColorExtractionwithMask(ColorExtraction):
                     except:
                         pass
 
-                    # if group_color not in list_computed_gc and group_color not in list_not_found_gc:
                     try:
-                        # image = cv2.imread(os.path.join(path_images, file))
                         image = self.get_image_from_s3(group, color)
                         dict_colors = self.extract_colors_from_image(image, group_color, tolerance=12)
                         color_distribution_lk = {color_name: 0. for color_name in
@@ -340,106 +377,125 @@ class ColorExtractionwithMask(ColorExtraction):
                                                            sorted(self.dict_LK_colors.keys())}
                         color_distribution_matplotlib = {color_name: 0. for color_name in
                                                          sorted(colors.cnames.keys())}
+                        if dict_colors is not None:
+                            dict_image = dict()
+                            dict_image["group_color"] = group_color
 
-                        dict_image = dict()
-                        dict_image["group_color"] = group_color
+                            # Find the most similar colors to the ones extracted
+                            i = 1
+                            # Match each detected color to a similar one in the database
+                            if color in self.dict_heuristics:
+                                # Las heurísticas pueden aplicar
+                                for rgb_str, pct in dict_colors.items():
+                                    dict_image["img_color_{}_rgb".format(i)] = rgb_str
+                                    dict_image["pct_color_{}".format(i)] = pct
+                                    matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
+                                    lkcolor, dist_lk = self.get_most_similar_LK_color(
+                                        [int(x) for x in rgb_str.split("_")])
 
-                        # Find the most similar colors to the ones extracted
-                        i = 1
-                        # Match each detected color to a similar one in the database
-                        if color in self.dict_heuristics:
-                            # Las heurísticas pueden aplicar
-                            for rgb_str, pct in dict_colors.items():
-                                dict_image["img_color_{}_rgb".format(i)] = rgb_str
-                                dict_image["pct_color_{}".format(i)] = pct
-                                matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
-                                lkcolor, dist_lk = self.get_most_similar_LK_color(
-                                    [int(x) for x in rgb_str.split("_")])
-
-                                # Comprobamos si se cumplen las heuristicas
-                                if lkcolor in self.dict_heuristics[color]["values"]:
-                                    if self.dict_heuristics[color]["exception"] and \
-                                            dist_lk <= self.dict_heuristics[color]["dist_exception"]:
-                                        lkcolor_heuristic = lkcolor
+                                    # Comprobamos si se cumplen las heuristicas
+                                    if lkcolor in self.dict_heuristics[color]["values"]:
+                                        if self.dict_heuristics[color]["exception"] and \
+                                                dist_lk <= self.dict_heuristics[color]["dist_exception"]:
+                                            lkcolor_heuristic = lkcolor
+                                        else:
+                                            lkcolor_heuristic = color
                                     else:
+                                        lkcolor_heuristic = lkcolor
+
+                                    if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
                                         lkcolor_heuristic = color
-                                else:
+
+                                    # We assign the percentage of the color to the dictionary
+                                    color_distribution_matplotlib[matcolor] += pct
+                                    color_distribution_lk[lkcolor] += pct
+                                    color_distribution_lk_heuristic[lkcolor_heuristic] += pct
+                                    i += 1
+                            else:
+                                # No afectan las heurísticas
+                                for rgb_str, pct in dict_colors.items():
+                                    dict_image["img_color_{}_rgb".format(i)] = rgb_str
+                                    dict_image["pct_color_{}".format(i)] = pct
+                                    matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
+                                    lkcolor, dist_lk = self.get_most_similar_LK_color(
+                                        [int(x) for x in rgb_str.split("_")])
                                     lkcolor_heuristic = lkcolor
 
-                                if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
-                                    lkcolor_heuristic = color
+                                    if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
+                                        lkcolor_heuristic = color
 
-                                # We assign the percentage of the color to the dictionary
-                                color_distribution_matplotlib[matcolor] += pct
-                                color_distribution_lk[lkcolor] += pct
-                                color_distribution_lk_heuristic[lkcolor_heuristic] += pct
-                                i += 1
+                                    # We assign the percentage of the color to the dictionary
+                                    color_distribution_matplotlib[matcolor] += pct
+                                    color_distribution_lk[lkcolor] += pct
+                                    color_distribution_lk_heuristic[lkcolor_heuristic] += pct
+                                    i += 1
+
+                            # Ordenamos los colores por porcentaje
+                            dict_info_lk = dict()
+                            dict_info_lk["group_color"] = group_color
+                            dict_info_lk_heuristic = dict()
+                            dict_info_lk_heuristic["group_color"] = group_color
+                            dict_info_mat = dict()
+                            dict_info_mat["group_color"] = group_color
+
+                            i = 1
+                            for clr, pct in sorted(color_distribution_lk.items(), key=lambda x: x[1],
+                                                   reverse=True):
+                                if pct > 0.:
+                                    dict_info_lk["lk_color_{}".format(i)] = clr
+                                    dict_info_lk["pct_color_{}".format(i)] = pct
+                                    i += 1
+                                else:
+                                    break
+                            i = 1
+                            for clr, pct in sorted(color_distribution_lk_heuristic.items(),
+                                                   key=lambda x: x[1],
+                                                   reverse=True):
+                                if pct > 0.:
+                                    dict_info_lk_heuristic["lk_color_{}".format(i)] = clr
+                                    dict_info_lk_heuristic["pct_color_{}".format(i)] = pct
+                                    i += 1
+                                else:
+                                    break
+                            i = 1
+                            for clr, pct in sorted(color_distribution_matplotlib.items(),
+                                                   key=lambda x: x[1],
+                                                   reverse=True):
+                                if pct > 0.:
+                                    dict_info_mat["matplotlib_color_{}".format(i)] = clr
+                                    dict_info_mat["pct_color_{}".format(i)] = pct
+                                    i += 1
+                                else:
+                                    break
+                            dict_info_lk["successful_extraction"] = 1
+                            dict_info_lk_heuristic["successful_extraction"] = 1
+                            color_distribution_lk['group_color'] = group_color
+                            color_distribution_lk_heuristic['group_color'] = group_color
+                            color_distribution_matplotlib['group_color'] = group_color
+                            list_gc_info_matplotlib.append(dict_info_mat)
+                            list_gc_dict_lk.append(color_distribution_lk)
+                            list_gc_dict_lk_heuristic.append(color_distribution_lk_heuristic)
+                            list_gc_dict_matplotlib.append(color_distribution_matplotlib)
+                            list_gc_image_color_detected.append(dict_image)
                         else:
-                            # No afectan las heurísticas
-                            for rgb_str, pct in dict_colors.items():
-                                dict_image["img_color_{}_rgb".format(i)] = rgb_str
-                                dict_image["pct_color_{}".format(i)] = pct
-                                matcolor = self.get_most_similar_color([int(x) for x in rgb_str.split("_")])
-                                lkcolor, dist_lk = self.get_most_similar_LK_color(
-                                    [int(x) for x in rgb_str.split("_")])
-                                lkcolor_heuristic = lkcolor
+                            # Extraction failed
+                            dict_info_lk = dict()
+                            dict_info_lk["group_color"] = group_color
+                            dict_info_lk["lk_color_1"] = color
+                            dict_info_lk["pct_color_1"] = 1.0
+                            dict_info_lk["lk_color_2"] = color
+                            dict_info_lk["pct_color_2"] = 1.0
+                            dict_info_lk["successful_extraction"] = 0
 
-                                if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
-                                    lkcolor_heuristic = color
-
-                                # We assign the percentage of the color to the dictionary
-                                color_distribution_matplotlib[matcolor] += pct
-                                color_distribution_lk[lkcolor] += pct
-                                color_distribution_lk_heuristic[lkcolor_heuristic] += pct
-                                i += 1
-
-                        # Ordenamos los colores por porcentaje
-                        dict_info_lk = dict()
-                        dict_info_lk["group_color"] = group_color
-                        dict_info_lk_heuristic = dict()
-                        dict_info_lk_heuristic["group_color"] = group_color
-                        dict_info_mat = dict()
-                        dict_info_mat["group_color"] = group_color
-
-                        i = 1
-                        for clr, pct in sorted(color_distribution_lk.items(), key=lambda x: x[1],
-                                               reverse=True):
-                            if pct > 0.:
-                                dict_info_lk["lk_color_{}".format(i)] = clr
-                                dict_info_lk["pct_color_{}".format(i)] = pct
-                                i += 1
-                            else:
-                                break
-                        i = 1
-                        for clr, pct in sorted(color_distribution_lk_heuristic.items(),
-                                               key=lambda x: x[1],
-                                               reverse=True):
-                            if pct > 0.:
-                                dict_info_lk_heuristic["lk_color_{}".format(i)] = clr
-                                dict_info_lk_heuristic["pct_color_{}".format(i)] = pct
-                                i += 1
-                            else:
-                                break
-                        i = 1
-                        for clr, pct in sorted(color_distribution_matplotlib.items(),
-                                               key=lambda x: x[1],
-                                               reverse=True):
-                            if pct > 0.:
-                                dict_info_mat["matplotlib_color_{}".format(i)] = clr
-                                dict_info_mat["pct_color_{}".format(i)] = pct
-                                i += 1
-                            else:
-                                break
-                        color_distribution_lk['group_color'] = group_color
-                        color_distribution_lk_heuristic['group_color'] = group_color
-                        color_distribution_matplotlib['group_color'] = group_color
+                            dict_info_lk_heuristic = dict()
+                            dict_info_lk_heuristic["group_color"] = group_color
+                            dict_info_lk_heuristic["lk_color_1"] = color
+                            dict_info_lk_heuristic["pct_color_1"] = 1.0
+                            dict_info_lk_heuristic["lk_color_2"] = color
+                            dict_info_lk_heuristic["pct_color_2"] = 1.0
+                            dict_info_lk_heuristic["successful_extraction"] = 0
                         list_gc_info_lk.append(dict_info_lk)
                         list_gc_info_lk_heuristic.append(dict_info_lk_heuristic)
-                        list_gc_info_matplotlib.append(dict_info_mat)
-                        list_gc_dict_lk.append(color_distribution_lk)
-                        list_gc_dict_lk_heuristic.append(color_distribution_lk_heuristic)
-                        list_gc_dict_matplotlib.append(color_distribution_matplotlib)
-                        list_gc_image_color_detected.append(dict_image)
                         n_images_comp += 1
                     except Exception as error:
                         logger.log(f'Error computing {group_color}', exc_info=True, level='error')
@@ -514,7 +570,8 @@ class ColorExtractionwithMask(ColorExtraction):
             masked_image = masked_image.reshape(masked_image.shape[0], 1, 3)
 
             # CV2 works in BGR, but PIL expects RGB, so we convert the image to RGB format
-            masked_image = cv2.cvtColor(masked_image, cv2.COLOR_BGR2RGB)
+            # not necessary now as we read with PILLOW (RGB)!
+            # masked_image = cv2.cvtColor(masked_image, cv2.COLOR_BGR2RGB)
 
             # extcolors expects a PIL image, so we transform the masked image to PIL
             masked_image_pil = PIL.Image.fromarray(np.uint8(masked_image))
@@ -652,127 +709,143 @@ class ColorExtractionwithMask(ColorExtraction):
         l, a, b = rgb2lab([[[red_st, green_st, blue_st]]])[0][0]
         # qué es argumento kL? se pueden extraer los colores directamente en LAB?
         distances = deltaE_ciede2000([l, a, b], self.data_LK_colors[["L", "A", "B"]].to_numpy())
-        # distances = deltaE_cie76([red_st, green_st, blue_st],
-        #                          self.data_LK_colors[["Red_st", "Green_st", "Blue_st"]].to_numpy())
 
         idx_min = np.argmin(distances)
         # options = [(self.data_LK_colors.iloc[i[0]].values[0], i[1]) for i in sorted(enumerate(distances),
-        # key=lambda x: x[1])][:5]
+        #  key=lambda x: x[1])][:5]
         similar_color = self.data_LK_colors.iloc[idx_min].values
         return similar_color[0], distances[idx_min]
 
 
 if __name__ == "__main__":
     cem = ColorExtractionwithMask(local=True)
-    df_gc_color_distributions = cem.get_LK_images_info(filtered_season=9)
-    """
+    # df_gc_color_distributions = cem.get_LK_images_info(filtered_season=9)
+
     # Get the rgb decomposition of Lookiero colors
     cem.get_LK_color()
     # Get the yuv, standardize data of Lookiero colors
     cem.get_LK_color_data()
     cem.get_matplotlib_color_data()
-    list_group_colors = ['P1103_C22', 'K866_C15', 'Y169_C22', 'K653_C7', 'K915_C30', 'J628_C24']
+    list_group_colors = ['S2751_C34', 'Y194_C2']
     for group_color in list_group_colors:
         group, color = group_color.split("_")
-        groupcolor = "".join([group, color])
-        url = f"https://s3-eu-west-1.amazonaws.com/catalogo.labs/{group}/{groupcolor}.jpg"
         image = cem.get_image_from_s3(group, color)
         dict_colors = cem.extract_colors_from_image(image, group_color, tolerance=12)
         color_distribution_lk = {color_name: 0. for color_name in sorted(cem.dict_LK_colors.keys())}
         color_distribution_lk_heuristic = {color_name: 0. for color_name in sorted(cem.dict_LK_colors.keys())}
         color_distribution_matplotlib = {color_name: 0. for color_name in colors.cnames.keys()}
-        dict_image = dict()
-        dict_image["group_color"] = group_color
 
-        # Find the most similar colors to the ones extracted
-        j = 1
-        # Match each detected color to a similar one in the database
-        if color in cem.dict_heuristics:
-            # Las heurísticas pueden aplicar
-            for rgb_str, pct in dict_colors.items():
-                dict_image["img_color_{}_rgb".format(j)] = rgb_str
-                dict_image["pct_color_{}".format(j)] = pct
-                matcolor = cem.get_most_similar_color([int(x) for x in rgb_str.split("_")])
-                lkcolor, dist_lk = cem.get_most_similar_LK_color(
-                    [int(x) for x in rgb_str.split("_")])
+        if dict_colors is not None:
+            dict_image = dict()
+            dict_image["group_color"] = group_color
+            # Find the most similar colors to the ones extracted
+            j = 1
+            # Match each detected color to a similar one in the database
+            if color in cem.dict_heuristics:
+                # Las heurísticas pueden aplicar
+                for rgb_str, pct in dict_colors.items():
+                    dict_image["img_color_{}_rgb".format(j)] = rgb_str
+                    dict_image["pct_color_{}".format(j)] = pct
+                    matcolor = cem.get_most_similar_color([int(x) for x in rgb_str.split("_")])
+                    lkcolor, dist_lk = cem.get_most_similar_LK_color(
+                        [int(x) for x in rgb_str.split("_")])
 
-                # Comprobamos si se cumplen las heuristicas
-                if lkcolor in cem.dict_heuristics[color]["values"]:
-                    if cem.dict_heuristics[color]["exception"] and \
-                            dist_lk <= cem.dict_heuristics[color]["dist_exception"]:
-                        lkcolor_heuristic = lkcolor
+                    # Comprobamos si se cumplen las heuristicas
+                    if lkcolor in cem.dict_heuristics[color]["values"]:
+                        if cem.dict_heuristics[color]["exception"] and \
+                                dist_lk <= cem.dict_heuristics[color]["dist_exception"]:
+                            lkcolor_heuristic = lkcolor
+                        else:
+                            lkcolor_heuristic = color
                     else:
+                        lkcolor_heuristic = lkcolor
+
+                    if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
                         lkcolor_heuristic = color
-                else:
+
+                    # We assign the percentage of the color to the dictionary
+                    color_distribution_matplotlib[matcolor] += pct
+                    color_distribution_lk[lkcolor] += pct
+                    color_distribution_lk_heuristic[lkcolor_heuristic] += pct
+                    j += 1
+            else:
+                # No afectan las heurísticas
+                for rgb_str, pct in dict_colors.items():
+                    dict_image["img_color_{}_rgb".format(j)] = rgb_str
+                    dict_image["pct_color_{}".format(j)] = pct
+                    matcolor = cem.get_most_similar_color([int(x) for x in rgb_str.split("_")])
+                    lkcolor, dist_lk = cem.get_most_similar_LK_color(
+                        [int(x) for x in rgb_str.split("_")])
                     lkcolor_heuristic = lkcolor
 
-                if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
-                    lkcolor_heuristic = color
+                    if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
+                        lkcolor_heuristic = color
 
-                # We assign the percentage of the color to the dictionary
-                color_distribution_matplotlib[matcolor] += pct
-                color_distribution_lk[lkcolor] += pct
-                color_distribution_lk_heuristic[lkcolor_heuristic] += pct
-                j += 1
+                    # We assign the percentage of the color to the dictionary
+                    color_distribution_matplotlib[matcolor] += pct
+                    color_distribution_lk[lkcolor] += pct
+                    color_distribution_lk_heuristic[lkcolor_heuristic] += pct
+                    j += 1
+
+            # Ordenamos los colores por porcentaje
+            dict_info_lk = dict()
+            dict_info_lk["group_color"] = group_color
+            dict_info_lk_heuristic = dict()
+            dict_info_lk_heuristic["group_color"] = group_color
+            dict_info_mat = dict()
+            dict_info_mat["group_color"] = group_color
+
+            j = 1
+            for clr, pct in sorted(color_distribution_lk.items(), key=lambda x: x[1],
+                                   reverse=True):
+                if pct > 0.:
+                    dict_info_lk["lk_color_{}".format(j)] = clr
+                    dict_info_lk["pct_color_{}".format(j)] = pct
+                    j += 1
+                else:
+                    break
+            j = 1
+            for clr, pct in sorted(color_distribution_lk_heuristic.items(),
+                                   key=lambda x: x[1],
+                                   reverse=True):
+                if pct > 0.:
+                    dict_info_lk_heuristic["lk_color_{}".format(j)] = clr
+                    dict_info_lk_heuristic["pct_color_{}".format(j)] = pct
+                    j += 1
+                else:
+                    break
+            j = 1
+            for clr, pct in sorted(color_distribution_matplotlib.items(),
+                                   key=lambda x: x[1],
+                                   reverse=True):
+                if pct > 0.:
+                    dict_info_mat["matplotlib_color_{}".format(j)] = clr
+                    dict_info_mat["pct_color_{}".format(j)] = pct
+                    j += 1
+                else:
+                    break
+            dict_info_lk["successful_extraction"] = 1
+            dict_info_lk_heuristic["successful_extraction"] = 1
+            color_distribution_lk['group_color'] = group_color
+            color_distribution_lk_heuristic['group_color'] = group_color
+            color_distribution_matplotlib['group_color'] = group_color
+            print(f"{group_color} done.")
         else:
-            # No afectan las heurísticas
-            for rgb_str, pct in dict_colors.items():
-                dict_image["img_color_{}_rgb".format(j)] = rgb_str
-                dict_image["pct_color_{}".format(j)] = pct
-                matcolor = cem.get_most_similar_color([int(x) for x in rgb_str.split("_")])
-                lkcolor, dist_lk = cem.get_most_similar_LK_color(
-                    [int(x) for x in rgb_str.split("_")])
-                lkcolor_heuristic = lkcolor
+            # Extraction failed
+            dict_info_lk = dict()
+            dict_info_lk["group_color"] = group_color
+            dict_info_lk["lk_color_1"] = color
+            dict_info_lk["pct_color_1"] = 1.0
+            dict_info_lk["lk_color_2"] = color
+            dict_info_lk["pct_color_2"] = 1.0
+            dict_info_lk["successful_extraction"] = 0
 
-                if lkcolor == "C1" and dist_lk < 0.5 and pct > 0.35 and color != "C1":
-                    lkcolor_heuristic = color
+            dict_info_lk_heuristic = dict()
+            dict_info_lk_heuristic["group_color"] = group_color
+            dict_info_lk_heuristic["lk_color_1"] = color
+            dict_info_lk_heuristic["pct_color_1"] = 1.0
+            dict_info_lk_heuristic["lk_color_2"] = color
+            dict_info_lk_heuristic["pct_color_2"] = 1.0
+            dict_info_lk_heuristic["successful_extraction"] = 0
 
-                # We assign the percentage of the color to the dictionary
-                color_distribution_matplotlib[matcolor] += pct
-                color_distribution_lk[lkcolor] += pct
-                color_distribution_lk_heuristic[lkcolor_heuristic] += pct
-                j += 1
-
-        # Ordenamos los colores por porcentaje
-        dict_info_lk = dict()
-        dict_info_lk["group_color"] = group_color
-        dict_info_lk_heuristic = dict()
-        dict_info_lk_heuristic["group_color"] = group_color
-        dict_info_mat = dict()
-        dict_info_mat["group_color"] = group_color
-
-        j = 1
-        for clr, pct in sorted(color_distribution_lk.items(), key=lambda x: x[1],
-                               reverse=True):
-            if pct > 0.:
-                dict_info_lk["lk_color_{}".format(j)] = clr
-                dict_info_lk["pct_color_{}".format(j)] = pct
-                j += 1
-            else:
-                break
-        j = 1
-        for clr, pct in sorted(color_distribution_lk_heuristic.items(),
-                               key=lambda x: x[1],
-                               reverse=True):
-            if pct > 0.:
-                dict_info_lk_heuristic["lk_color_{}".format(j)] = clr
-                dict_info_lk_heuristic["pct_color_{}".format(j)] = pct
-                j += 1
-            else:
-                break
-        j = 1
-        for clr, pct in sorted(color_distribution_matplotlib.items(),
-                               key=lambda x: x[1],
-                               reverse=True):
-            if pct > 0.:
-                dict_info_mat["lk_color_{}".format(j)] = clr
-                dict_info_mat["pct_color_{}".format(j)] = pct
-                j += 1
-            else:
-                break
-        color_distribution_lk['group_color'] = group_color
-        color_distribution_lk_heuristic['group_color'] = group_color
-        color_distribution_matplotlib['group_color'] = group_color
-        print(f"{group_color} done.")
-    """
     print("Done")
