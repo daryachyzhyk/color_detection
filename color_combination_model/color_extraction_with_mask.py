@@ -737,7 +737,7 @@ if __name__ == "__main__":
     # Get the yuv, standardize data of Lookiero colors
     cem.get_LK_color_data()
     cem.get_matplotlib_color_data()
-    list_group_colors = ['S2751_C34', 'Y194_C2']
+    list_group_colors = ['Q531_C3']
     for group_color in list_group_colors:
         group, color = group_color.split("_")
         image = cem.get_image_from_s3(group, color)
@@ -845,6 +845,8 @@ if __name__ == "__main__":
             color_distribution_lk_heuristic['group_color'] = group_color
             color_distribution_matplotlib['group_color'] = group_color
             print(f"{group_color} done.")
+            for color in dict_colors.keys():
+                print(color)
         else:
             # Extraction failed
             dict_info_lk = dict()

@@ -12,7 +12,13 @@ logger = util.LoggingClass('image_segmentation')
 
 def find_mask(img):
     try:
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # NOTE: Be careful if the img is a PILLOW (RGB) or OpenCV (BGR) image!!
+        if len(img.shape) == 3:
+            gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)  # COLOR_BGR2GRAY
+        elif len(img.shape) == 2:
+            gray = img.copy()
+        else:
+            return None
         gray_r = gray.reshape(gray.shape[0] * gray.shape[1]) / 255
         gray_apparel = gray_r[gray_r <= 0.975]
         mean_white_apparel = gray_apparel.mean()
