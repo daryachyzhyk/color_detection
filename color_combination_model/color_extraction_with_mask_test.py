@@ -729,7 +729,7 @@ class ColorExtractionwithMask(ColorExtraction):
 
 
 if __name__ == "__main__":
-    cem = ColorExtractionwithMask(local=True)
+    cem = ColorExtractionwithMask(local=False)
     # df_gc_color_distributions = cem.get_LK_images_info(filtered_season=9)
 
     # Get the rgb decomposition of Lookiero colors
