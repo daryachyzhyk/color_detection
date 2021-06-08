@@ -8,7 +8,7 @@ except:
     import mysql.connector as MySQLdb
 import psycopg2
 # from colors import rgb, hex
-from matplotlib import colorsic
+from matplotlib import colors
 from skimage.color import deltaE_cie76
 import requests, io
 import urllib.request as url_request
