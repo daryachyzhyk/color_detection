@@ -125,9 +125,11 @@ def color_extraction_with_mask_cron(local=True):
             color_distribution_lk['group_color'] = group_color
             color_distribution_lk_heuristic['group_color'] = group_color
             color_distribution_matplotlib['group_color'] = group_color
-            print(f"{group_color}:")
+            for color in dict_info_lk_heuristic.values():
+                print(color)
             for color in dict_colors.keys():
                 print(color)
+
             print("done\n")
         else:
             # Extraction failed
