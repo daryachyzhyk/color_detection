@@ -11,7 +11,7 @@ def color_extraction_with_mask_cron(local=True):
     # Get the yuv, standardize data of Lookiero colors
     cem.get_LK_color_data()
     cem.get_matplotlib_color_data()
-    list_group_colors = ['Q531_C3', 'Q522_C50']
+    list_group_colors = ['Q500_C16', 'Q522_C50']
     for group_color in list_group_colors:
         group, color = group_color.split("_")
         image = cem.get_image_from_s3(group, color)
@@ -19,7 +19,7 @@ def color_extraction_with_mask_cron(local=True):
             # Image not found
             print(f"Error descargando la imagen {group_color}. Not found or wrong url.")
             continue
-        dict_colors = cem.extract_colors_from_image(image, group_color, tolerance=12)
+        dict_colors = cem.extract_colors_from_image(image, group_color, tolerance=16)
         color_distribution_lk = {color_name: 0. for color_name in sorted(cem.dict_LK_colors.keys())}
         color_distribution_lk_heuristic = {color_name: 0. for color_name in sorted(cem.dict_LK_colors.keys())}
         color_distribution_matplotlib = {color_name: 0. for color_name in colors.cnames.keys()}
@@ -93,6 +93,13 @@ def color_extraction_with_mask_cron(local=True):
                     j += 1
                 else:
                     break
+            # Aplicamos la heurística de C20->C1
+            for clr, pct in sorted(color_distribution_lk_heuristic.items(),
+                                   key=lambda x: x[1],
+                                   reverse=True)[:1]:
+                if clr == "C20" and color != "C20":
+                    color_distribution_lk_heuristic["C1"] += pct
+                    color_distribution_lk_heuristic["C20"] = 0.
             j = 1
             for clr, pct in sorted(color_distribution_lk_heuristic.items(),
                                    key=lambda x: x[1],
