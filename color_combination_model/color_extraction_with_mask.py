@@ -579,7 +579,7 @@ class ColorExtractionwithMask(ColorExtraction):
             logger.log(error, exc_info=True, level='error')
             return False
 
-    def extract_colors_from_image(self, image, group_color, tolerance=10):
+    def extract_colors_from_image(self, image, group_color, tolerance=16):
         """
         Extracts the colors and their percentage in a given image.
         :return: dictionary where the keys are the color RGB representation and the values are their percentage in the image.
